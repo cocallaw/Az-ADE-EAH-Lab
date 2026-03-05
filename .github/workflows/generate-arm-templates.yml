@@ -1,0 +1,38 @@
+name: Generate ARM Templates
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "bicep/**/*.bicep"
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    name: Compile Bicep → ARM JSON
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build ARM templates
+        run: |
+          az bicep build --file bicep/windows/main.bicep --outfile bicep/windows/azuredeploy.json
+          az bicep build --file bicep/linux/main.bicep --outfile bicep/linux/azuredeploy.json
+
+      - name: Check for changes
+        id: diff
+        run: |
+          git diff --quiet bicep/*/azuredeploy.json && echo "changed=false" >> "$GITHUB_OUTPUT" \
+            || echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Commit updated ARM templates
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bicep/windows/azuredeploy.json bicep/linux/azuredeploy.json
+          git commit -m "chore: regenerate azuredeploy.json from Bicep templates"
+          git push
