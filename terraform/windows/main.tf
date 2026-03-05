@@ -222,6 +222,7 @@ resource "azurerm_virtual_machine_extension" "ade" {
   type                       = "AzureDiskEncryption"
   type_handler_version       = "2.2"
   auto_upgrade_minor_version = true
+  force_update_tag           = var.sequence_version
   tags                       = var.tags
 
   settings = jsonencode({
@@ -232,6 +233,7 @@ resource "azurerm_virtual_machine_extension" "ade" {
     KekVaultResourceId     = azurerm_key_vault.kv.id
     KeyEncryptionAlgorithm = "RSA-OAEP"
     VolumeType             = "All"
+    ResizeOSDisk           = false
   })
 
   depends_on = [azurerm_virtual_machine_data_disk_attachment.data_disk_attach]

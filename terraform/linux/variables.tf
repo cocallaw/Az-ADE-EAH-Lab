@@ -52,6 +52,12 @@ variable "allowed_ssh_source_address" {
   default     = "Deny"
 }
 
+variable "sequence_version" {
+  description = "Unique value for the extension forceUpdateTag. Change to a new value (e.g. a GUID) to force re-encryption."
+  type        = string
+  default     = "1.0"
+}
+
 variable "tags" {
   description = "Tags to apply to all resources."
   type        = map(string)

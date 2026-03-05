@@ -37,6 +37,9 @@ param keyVaultAdminObjectId string
 @description('Allowed source IP for SSH (port 22). Use your public IP or a CIDR. Defaults to deny-all.')
 param allowedSshSourceAddress string = 'Deny'
 
+@description('Unique value passed to forceUpdateTag on the ADE extension. Change this to force re-encryption (e.g. pass a new GUID).')
+param sequenceVersion string = '1.0'
+
 // ---------------------------------------------------------------------------
 // Variables
 // ---------------------------------------------------------------------------
@@ -282,6 +285,7 @@ resource adeExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' 
     type: 'AzureDiskEncryptionForLinux'
     typeHandlerVersion: '1.1'
     autoUpgradeMinorVersion: true
+    forceUpdateTag: sequenceVersion
     settings: {
       EncryptionOperation: 'EnableEncryption'
       KeyVaultURL: keyVault.properties.vaultUri

@@ -22,6 +22,9 @@
     },
     "allowedSshSourceAddress": {
       "value": "Deny"
+    },
+    "sequenceVersion": {
+      "value": "1.0"
     }
   }
 }

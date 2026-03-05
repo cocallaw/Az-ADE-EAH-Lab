@@ -40,6 +40,9 @@ param keyVaultAdminObjectId string
 @description('Allowed source IP for RDP (port 3389). Use your public IP or a CIDR. Defaults to deny-all.')
 param allowedRdpSourceAddress string = 'Deny'
 
+@description('Unique value passed to forceUpdateTag on the ADE extension. Change this to force re-encryption (e.g. pass a new GUID).')
+param sequenceVersion string = '1.0'
+
 // ---------------------------------------------------------------------------
 // Variables
 // ---------------------------------------------------------------------------
@@ -277,6 +280,7 @@ resource adeExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' 
     type: 'AzureDiskEncryption'
     typeHandlerVersion: '2.2'
     autoUpgradeMinorVersion: true
+    forceUpdateTag: sequenceVersion
     settings: {
       EncryptionOperation: 'EnableEncryption'
       KeyVaultURL: keyVault.properties.vaultUri
@@ -285,6 +289,7 @@ resource adeExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' 
       KekVaultResourceId: keyVault.id
       KeyEncryptionAlgorithm: 'RSA-OAEP'
       VolumeType: 'All'
+      ResizeOSDisk: false
     }
   }
 }

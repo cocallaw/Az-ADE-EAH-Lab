@@ -227,8 +227,11 @@ resource "azurerm_virtual_machine_extension" "ade" {
   type                       = "AzureDiskEncryptionForLinux"
   type_handler_version       = "1.1"
   auto_upgrade_minor_version = true
+  force_update_tag           = var.sequence_version
   tags                       = var.tags
 
+  # Note: ResizeOSDisk is a Windows/BitLocker-only setting; it is intentionally
+  # absent from the Linux extension settings per the official quickstart template.
   settings = jsonencode({
     EncryptionOperation    = "EnableEncryption"
     KeyVaultURL            = azurerm_key_vault.kv.vault_uri
