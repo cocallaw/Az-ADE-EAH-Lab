@@ -289,6 +289,8 @@ resource adeExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' 
       KeyEncryptionKeyURL: adeKey.properties.keyUriWithVersion
       KekVaultResourceId: keyVault.id
       KeyEncryptionAlgorithm: 'RSA-OAEP'
+      // 'All' encrypts both OS and data disks. OS-disk encryption on Linux requires
+      // swap to be disabled before enabling ADE. For data-only encryption use 'Data'.
       VolumeType: 'All'
     }
   }

@@ -228,7 +228,7 @@ resource "azurerm_virtual_machine_extension" "ade" {
     EncryptionOperation    = "EnableEncryption"
     KeyVaultURL            = azurerm_key_vault.kv.vault_uri
     KeyVaultResourceId     = azurerm_key_vault.kv.id
-    KeyEncryptionKeyURL    = azurerm_key_vault_key.ade_key.version_less_id
+    KeyEncryptionKeyURL    = azurerm_key_vault_key.ade_key.id
     KekVaultResourceId     = azurerm_key_vault.kv.id
     KeyEncryptionAlgorithm = "RSA-OAEP"
     VolumeType             = "All"
