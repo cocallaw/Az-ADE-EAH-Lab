@@ -9,8 +9,8 @@ A hands-on lab for walking customers through the process of migrating virtual ma
 
 | Template | Deploy |
 |----------|--------|
-| Bicep – Windows Server 2022 with ADE | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fcocallaw%2FAz-ADE-EAH-Lab%2Fmain%2Fbicep%2Fwindows%2Fazuredeploy.json) |
-| Bicep – Ubuntu 22.04 LTS with ADE | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fcocallaw%2FAz-ADE-EAH-Lab%2Fmain%2Fbicep%2Flinux%2Fazuredeploy.json) |
+| Bicep – Windows Server 2022 with ADE | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fcocallaw%2FAz-ADE-EAH-Lab%2Frefs%2Fheads%2Fmain%2Fbicep%2Fwindows%2Fazuredeploy.json) |
+| Bicep – Ubuntu 22.04 LTS with ADE | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fcocallaw%2FAz-ADE-EAH-Lab%2Frefs%2Fheads%2Fmain%2Fbicep%2Flinux%2Fazuredeploy.json) |
 
 > **Note:** Deploy to Azure buttons use the compiled ARM JSON templates (`azuredeploy.json`). For Terraform deployments, use the [GitHub Actions workflows](#github-actions-workflows) or deploy locally.
 

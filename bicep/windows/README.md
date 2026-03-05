@@ -1,6 +1,6 @@
 # Bicep – Windows VM with ADE
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fcocallaw%2FAz-ADE-EAH-Lab%2Fmain%2Fbicep%2Fwindows%2Fazuredeploy.json)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fcocallaw%2FAz-ADE-EAH-Lab%2Frefs%2Fheads%2Fmain%2Fbicep%2Fwindows%2Fazuredeploy.json)
 
 This Bicep template deploys the **lab starting state**: a Windows Server 2022 VM with **Azure Disk Encryption (ADE)** enabled. Use it as the baseline before running the migration scripts.
 
