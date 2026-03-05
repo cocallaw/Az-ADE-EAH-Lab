@@ -150,12 +150,14 @@ bash 03-migrate-ade-to-eah.sh <RESOURCE-GROUP> <VM-NAME>
 
 This repository includes four example workflows that deploy the lab VMs via GitHub Actions. Each workflow uses `workflow_dispatch` so you can trigger deployments manually from the **Actions** tab.
 
-| Workflow | Template | Trigger |
-|----------|----------|---------|
-| [Deploy Bicep – Windows](.github/workflows/deploy-bicep-windows.yml) | `bicep/windows/main.bicep` | Manual |
-| [Deploy Bicep – Linux](.github/workflows/deploy-bicep-linux.yml) | `bicep/linux/main.bicep` | Manual |
-| [Deploy Terraform – Windows](.github/workflows/deploy-terraform-windows.yml) | `terraform/windows/` | Manual |
-| [Deploy Terraform – Linux](.github/workflows/deploy-terraform-linux.yml) | `terraform/linux/` | Manual |
+| Workflow | Description | Trigger |
+|----------|-------------|---------|
+| [Validate Bicep](.github/workflows/validate-bicep.yml) | Lint & build both Bicep templates | Push / PR to `main` (bicep changes) |
+| [Generate ARM Templates](.github/workflows/generate-arm-templates.yml) | Compile Bicep → `azuredeploy.json` and auto-commit | Push to `main` (bicep changes) |
+| [Deploy Bicep – Windows](.github/workflows/deploy-bicep-windows.yml) | Deploy Windows VM with ADE via Bicep | Manual |
+| [Deploy Bicep – Linux](.github/workflows/deploy-bicep-linux.yml) | Deploy Linux VM with ADE via Bicep | Manual |
+| [Deploy Terraform – Windows](.github/workflows/deploy-terraform-windows.yml) | Deploy Windows VM with ADE via Terraform | Manual |
+| [Deploy Terraform – Linux](.github/workflows/deploy-terraform-linux.yml) | Deploy Linux VM with ADE via Terraform | Manual |
 
 ### Required secrets
 
