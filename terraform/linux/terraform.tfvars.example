@@ -1,0 +1,27 @@
+# Copy this file to terraform.tfvars and fill in the required values.
+# Never commit terraform.tfvars – it may contain sensitive values.
+
+resource_group_name = "ade-lab-rg"
+location            = "eastus"
+prefix              = "adelab"
+
+admin_username = "labadmin"
+# admin_ssh_public_key is intentionally omitted here; pass it on the command line:
+#   terraform apply -var="admin_ssh_public_key=$(cat ~/.ssh/id_rsa.pub)"
+# or set the TF_VAR_admin_ssh_public_key environment variable.
+
+vm_size = "Standard_D2s_v5"
+
+# Object ID of the principal (user or service principal) that will receive
+# Key Vault access policies.  Retrieve with:
+#   az ad signed-in-user show --query id -o tsv
+key_vault_admin_object_id = "<OBJECT-ID-OF-DEPLOYING-PRINCIPAL>"
+
+# Set to your workstation's public IP + /32 to allow SSH, or leave as "Deny".
+#   curl -s ifconfig.me && echo "/32"
+allowed_ssh_source_address = "Deny"
+
+tags = {
+  Environment = "Lab"
+  Purpose     = "ADE-to-EaH-Migration"
+}

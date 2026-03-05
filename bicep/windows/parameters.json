@@ -1,0 +1,35 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus"
+    },
+    "prefix": {
+      "value": "adelab"
+    },
+    "adminUsername": {
+      "value": "labadmin"
+    },
+    "adminPassword": {
+      "reference": {
+        "keyVault": {
+          "id": "/subscriptions/<SUBSCRIPTION-ID>/resourceGroups/<RG-NAME>/providers/Microsoft.KeyVault/vaults/<KV-NAME>"
+        },
+        "secretName": "vmAdminPassword"
+      }
+    },
+    "vmSize": {
+      "value": "Standard_D2s_v5"
+    },
+    "keyVaultAdminObjectId": {
+      "value": "<OBJECT-ID-OF-DEPLOYING-PRINCIPAL>"
+    },
+    "allowedRdpSourceAddress": {
+      "value": "Deny"
+    },
+    "sequenceVersion": {
+      "value": "1.0"
+    }
+  }
+}
