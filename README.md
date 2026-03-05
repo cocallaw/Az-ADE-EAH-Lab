@@ -5,6 +5,15 @@ A hands-on lab for walking customers through the process of migrating virtual ma
 > **Why migrate?**  
 > Azure Disk Encryption (ADE) is being retired. Microsoft recommends transitioning to [Encryption at Host](https://learn.microsoft.com/en-us/azure/virtual-machines/disk-encryption-overview) as the replacement. For official migration guidance see [Migrate from Azure Disk Encryption to Encryption at Host](https://learn.microsoft.com/en-us/azure/virtual-machines/disk-encryption-migrate).
 
+## Deploy to Azure
+
+| Template | Deploy |
+|----------|--------|
+| Bicep – Windows Server 2022 with ADE | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fcocallaw%2FAz-ADE-EAH-Lab%2Fmain%2Fbicep%2Fwindows%2Fazuredeploy.json) |
+| Bicep – Ubuntu 22.04 LTS with ADE | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fcocallaw%2FAz-ADE-EAH-Lab%2Fmain%2Fbicep%2Flinux%2Fazuredeploy.json) |
+
+> **Note:** Deploy to Azure buttons use the compiled ARM JSON templates (`azuredeploy.json`). For Terraform deployments, use the [GitHub Actions workflows](#github-actions-workflows) or deploy locally.
+
 ---
 
 ## Lab Overview
@@ -134,6 +143,33 @@ bash 03-migrate-ade-to-eah.sh <RESOURCE-GROUP> <VM-NAME>
 | [`terraform/linux`](terraform/linux/README.md) | Terraform template – Ubuntu 22.04 LTS VM with ADE |
 | [`scripts/powershell`](scripts/powershell/README.md) | PowerShell scripts for ADE setup and EaH migration |
 | [`scripts/cli`](scripts/cli/README.md) | Azure CLI (Bash) scripts for ADE setup and EaH migration |
+
+---
+
+## GitHub Actions Workflows
+
+This repository includes four example workflows that deploy the lab VMs via GitHub Actions. Each workflow uses `workflow_dispatch` so you can trigger deployments manually from the **Actions** tab.
+
+| Workflow | Template | Trigger |
+|----------|----------|---------|
+| [Deploy Bicep – Windows](.github/workflows/deploy-bicep-windows.yml) | `bicep/windows/main.bicep` | Manual |
+| [Deploy Bicep – Linux](.github/workflows/deploy-bicep-linux.yml) | `bicep/linux/main.bicep` | Manual |
+| [Deploy Terraform – Windows](.github/workflows/deploy-terraform-windows.yml) | `terraform/windows/` | Manual |
+| [Deploy Terraform – Linux](.github/workflows/deploy-terraform-linux.yml) | `terraform/linux/` | Manual |
+
+### Required secrets
+
+Configure these [repository secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions) before running any workflow:
+
+| Secret | Description |
+|--------|-------------|
+| `AZURE_CLIENT_ID` | App registration (service principal) client ID |
+| `AZURE_TENANT_ID` | Microsoft Entra ID tenant ID |
+| `AZURE_SUBSCRIPTION_ID` | Target Azure subscription ID |
+| `VM_ADMIN_PASSWORD` | Windows VM admin password (Bicep & Terraform Windows workflows) |
+| `VM_SSH_PUBLIC_KEY` | SSH public key content (Bicep & Terraform Linux workflows) |
+
+> **Authentication:** All workflows use [OpenID Connect (OIDC)](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation-create-trust) for passwordless Azure login. Configure a federated credential on your app registration pointing to this repository.
 
 ---
 
