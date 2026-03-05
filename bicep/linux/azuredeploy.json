@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.40.2.10011",
-      "templateHash": "5209050966086859443"
+      "templateHash": "12666905763267357961"
     }
   },
   "parameters": {
@@ -121,7 +121,7 @@
       "name": "[format('{0}/{1}', variables('kvName'), variables('keyName'))]",
       "properties": {
         "kty": "RSA",
-        "keySize": 2048,
+        "keySize": 3072,
         "keyOps": [
           "encrypt",
           "decrypt",

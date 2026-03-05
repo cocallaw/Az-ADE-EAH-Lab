@@ -98,7 +98,7 @@ resource adeKey 'Microsoft.KeyVault/vaults/keys@2023-07-01' = {
   name: keyName
   properties: {
     kty: 'RSA'
-    keySize: 2048
+    keySize: 3072
     keyOps: [
       'encrypt'
       'decrypt'

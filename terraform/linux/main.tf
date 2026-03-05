@@ -85,7 +85,7 @@ resource "azurerm_key_vault_key" "ade_key" {
   name         = "${var.prefix}-ade-key"
   key_vault_id = azurerm_key_vault.kv.id
   key_type     = "RSA"
-  key_size     = 2048
+  key_size     = 3072
 
   key_opts = [
     "decrypt", "encrypt", "sign", "unwrapKey", "verify", "wrapKey",
