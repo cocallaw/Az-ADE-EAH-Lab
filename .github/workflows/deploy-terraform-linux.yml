@@ -1,0 +1,102 @@
+name: Deploy Terraform – Linux VM with ADE
+
+on:
+  workflow_dispatch:
+    inputs:
+      resource_group_name:
+        description: "Name of the resource group to create"
+        required: true
+        type: string
+      location:
+        description: "Azure region for all resources"
+        required: false
+        type: string
+        default: "eastus"
+      prefix:
+        description: "Prefix applied to every resource name (2-10 chars)"
+        required: false
+        type: string
+        default: "adelab"
+      admin_username:
+        description: "Admin username for the Linux VM"
+        required: true
+        type: string
+      vm_size:
+        description: "VM SKU size"
+        required: false
+        type: string
+        default: "Standard_D2s_v5"
+      allowed_ssh_source_address:
+        description: "Source IP/CIDR for SSH access (use 'Deny' to block)"
+        required: false
+        type: string
+        default: "Deny"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  WORKING_DIR: terraform/linux
+  ARM_USE_OIDC: true
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+jobs:
+  deploy:
+    name: Deploy Linux VM with ADE
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get deployer Object ID
+        id: oid
+        run: |
+          OID=$(az ad signed-in-user show --query id -o tsv 2>/dev/null \
+                || az ad sp show --id "${{ secrets.AZURE_CLIENT_ID }}" --query id -o tsv)
+          echo "object_id=$OID" >> "$GITHUB_OUTPUT"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: |
+          terraform plan -out=tfplan \
+            -var="resource_group_name=${{ inputs.resource_group_name }}" \
+            -var="location=${{ inputs.location }}" \
+            -var="prefix=${{ inputs.prefix }}" \
+            -var="admin_username=${{ inputs.admin_username }}" \
+            -var="admin_ssh_public_key=${{ secrets.VM_SSH_PUBLIC_KEY }}" \
+            -var="vm_size=${{ inputs.vm_size }}" \
+            -var="key_vault_admin_object_id=${{ steps.oid.outputs.object_id }}" \
+            -var="allowed_ssh_source_address=${{ inputs.allowed_ssh_source_address }}"
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+
+      - name: Show deployment outputs
+        run: |
+          echo "### Deployment Outputs" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Output | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| VM Name | $(terraform output -raw vm_name) |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Public IP | $(terraform output -raw public_ip_address) |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Key Vault | $(terraform output -raw key_vault_name) |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Resource Group | $(terraform output -raw resource_group_name) |" >> "$GITHUB_STEP_SUMMARY"
