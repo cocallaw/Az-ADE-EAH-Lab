@@ -39,6 +39,19 @@ run()  {
   fi
 }
 
+format_elapsed() {
+  local total_secs=$1
+  if (( total_secs < 60 )); then
+    echo "${total_secs}s"
+  else
+    echo "$(( total_secs / 60 ))m $(( total_secs % 60 ))s"
+  fi
+}
+
+MIGRATION_START=$SECONDS
+declare -a STEP_NAMES=()
+declare -a STEP_TIMES=()
+
 # ── Context ───────────────────────────────────────────────────────────────────
 
 if [[ -n "$SUBSCRIPTION_ID" ]]; then
@@ -54,6 +67,7 @@ echo "VM Name             : $VM_NAME"
 # ── Step 1: Verify EncryptionAtHost feature ───────────────────────────────────
 
 step "Step 1 – Verify EncryptionAtHost feature registration"
+STEP_START=$SECONDS
 
 FEATURE_STATE=$(az feature show \
   --name EncryptionAtHost \
@@ -67,9 +81,14 @@ if [[ "$FEATURE_STATE" != "Registered" ]]; then
 fi
 echo "EncryptionAtHost feature: Registered ✓"
 
+STEP_ELAPSED=$(( SECONDS - STEP_START ))
+STEP_NAMES+=("Step 1 – Verify EaH feature"); STEP_TIMES+=("$STEP_ELAPSED")
+echo "  ⏱  $(format_elapsed $STEP_ELAPSED)"
+
 # ── Step 2: Confirm ADE is active ─────────────────────────────────────────────
 
 step "Step 2 – Confirm ADE is currently active"
+STEP_START=$SECONDS
 
 OS_TYPE=$(az vm show \
   --resource-group "$RESOURCE_GROUP" \
@@ -94,9 +113,14 @@ else
   ADE_ACTIVE=false
 fi
 
+STEP_ELAPSED=$(( SECONDS - STEP_START ))
+STEP_NAMES+=("Step 2 – Confirm ADE active"); STEP_TIMES+=("$STEP_ELAPSED")
+echo "  ⏱  $(format_elapsed $STEP_ELAPSED)"
+
 # ── Step 3: Disable ADE ───────────────────────────────────────────────────────
 
 step "Step 3 – Disable ADE (decrypt all disks)"
+STEP_START=$SECONDS
 
 if [[ "$ADE_ACTIVE" == "true" ]]; then
   echo "Disabling ADE on $VM_NAME (volume-type: all). This may take several minutes..."
@@ -110,9 +134,14 @@ else
   echo "Skipping – ADE is not active."
 fi
 
+STEP_ELAPSED=$(( SECONDS - STEP_START ))
+STEP_NAMES+=("Step 3 – Disable ADE"); STEP_TIMES+=("$STEP_ELAPSED")
+echo "  ⏱  $(format_elapsed $STEP_ELAPSED)"
+
 # ── Step 4: Deallocate the VM ─────────────────────────────────────────────────
 
 step "Step 4 – Deallocate the VM"
+STEP_START=$SECONDS
 
 POWER_STATE=$(az vm get-instance-view \
   --resource-group "$RESOURCE_GROUP" \
@@ -130,9 +159,14 @@ else
   echo "VM deallocated. ✓"
 fi
 
+STEP_ELAPSED=$(( SECONDS - STEP_START ))
+STEP_NAMES+=("Step 4 – Deallocate VM"); STEP_TIMES+=("$STEP_ELAPSED")
+echo "  ⏱  $(format_elapsed $STEP_ELAPSED)"
+
 # ── Step 5: Enable Encryption at Host ────────────────────────────────────────
 
 step "Step 5 – Enable Encryption at Host"
+STEP_START=$SECONDS
 
 EAH_ENABLED=$(az vm show \
   --resource-group "$RESOURCE_GROUP" \
@@ -151,9 +185,14 @@ else
   echo "Encryption at Host enabled. ✓"
 fi
 
+STEP_ELAPSED=$(( SECONDS - STEP_START ))
+STEP_NAMES+=("Step 5 – Enable EaH"); STEP_TIMES+=("$STEP_ELAPSED")
+echo "  ⏱  $(format_elapsed $STEP_ELAPSED)"
+
 # ── Step 6: Start the VM ──────────────────────────────────────────────────────
 
 step "Step 6 – Start the VM"
+STEP_START=$SECONDS
 
 echo "Starting $VM_NAME..."
 run az vm start \
@@ -161,7 +200,13 @@ run az vm start \
   --name "$VM_NAME"
 echo "VM started. ✓"
 
+STEP_ELAPSED=$(( SECONDS - STEP_START ))
+STEP_NAMES+=("Step 6 – Start VM"); STEP_TIMES+=("$STEP_ELAPSED")
+echo "  ⏱  $(format_elapsed $STEP_ELAPSED)"
+
 # ── Summary ───────────────────────────────────────────────────────────────────
+
+TOTAL_ELAPSED=$(( SECONDS - MIGRATION_START ))
 
 echo ""
 echo "============================================"
@@ -169,3 +214,11 @@ echo " Migration complete!"
 echo " VM '$VM_NAME' is now using Encryption at Host."
 echo " Run 04-validate-eah.sh to confirm."
 echo "============================================"
+echo ""
+echo "Timing Summary"
+echo "──────────────────────────────────────────"
+for i in "${!STEP_NAMES[@]}"; do
+  printf "  %-30s %s\n" "${STEP_NAMES[$i]}" "$(format_elapsed "${STEP_TIMES[$i]}")"
+done
+echo "──────────────────────────────────────────"
+printf "  %-30s %s\n" "Total" "$(format_elapsed $TOTAL_ELAPSED)"

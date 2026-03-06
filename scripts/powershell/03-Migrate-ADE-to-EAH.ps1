@@ -62,6 +62,15 @@ function Write-Step {
     Write-Host "──────────────────────────────────────────" -ForegroundColor DarkGray
 }
 
+function Format-Elapsed {
+    param([TimeSpan]$Span)
+    if ($Span.TotalSeconds -lt 60) { return "$([math]::Round($Span.TotalSeconds,1))s" }
+    return "$([math]::Floor($Span.TotalMinutes))m $($Span.Seconds)s"
+}
+
+$migrationTimer = [System.Diagnostics.Stopwatch]::StartNew()
+$stepTimings = [ordered]@{}
+
 # ── Context ──────────────────────────────────────────────────────────────────
 
 if ($SubscriptionId) {
@@ -76,6 +85,7 @@ Write-Host "VM Name             : $VMName"
 # ── Step 1: Verify EncryptionAtHost feature ───────────────────────────────────
 
 Write-Step "Step 1 – Verify EncryptionAtHost feature registration"
+$stepTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
 $feature = Get-AzProviderFeature -FeatureName 'EncryptionAtHost' -ProviderNamespace 'Microsoft.Compute'
 if ($feature.RegistrationState -ne 'Registered') {
@@ -85,9 +95,14 @@ if ($feature.RegistrationState -ne 'Registered') {
 }
 Write-Host "EncryptionAtHost feature: Registered" -ForegroundColor Green
 
+$stepTimer.Stop()
+$stepTimings['Step 1 – Verify EaH feature'] = $stepTimer.Elapsed
+Write-Host "  ⏱  $(Format-Elapsed $stepTimer.Elapsed)" -ForegroundColor DarkGray
+
 # ── Step 2: Confirm ADE is active ────────────────────────────────────────────
 
 Write-Step "Step 2 – Confirm ADE is currently active"
+$stepTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
 $vm = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName
 $osType = $vm.StorageProfile.OsDisk.OsType
@@ -103,9 +118,14 @@ if (-not $adeActive) {
     Write-Host "ADE is active. OS: $($adeStatus.OsVolumeEncrypted) | Data: $($adeStatus.DataVolumesEncrypted)" -ForegroundColor Green
 }
 
+$stepTimer.Stop()
+$stepTimings['Step 2 – Confirm ADE active'] = $stepTimer.Elapsed
+Write-Host "  ⏱  $(Format-Elapsed $stepTimer.Elapsed)" -ForegroundColor DarkGray
+
 # ── Step 3: Disable ADE ───────────────────────────────────────────────────────
 
 Write-Step "Step 3 – Disable ADE (decrypt all disks)"
+$stepTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
 if ($adeActive) {
     if ($PSCmdlet.ShouldProcess("$VMName", "Disable-AzVMDiskEncryption -VolumeType All")) {
@@ -117,9 +137,14 @@ if ($adeActive) {
     Write-Host "Skipping – ADE is not active." -ForegroundColor Yellow
 }
 
+$stepTimer.Stop()
+$stepTimings['Step 3 – Disable ADE'] = $stepTimer.Elapsed
+Write-Host "  ⏱  $(Format-Elapsed $stepTimer.Elapsed)" -ForegroundColor DarkGray
+
 # ── Step 4: Deallocate the VM ─────────────────────────────────────────────────
 
 Write-Step "Step 4 – Deallocate the VM"
+$stepTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
 $vmStatus = (Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName -Status).Statuses |
     Where-Object { $_.Code -like 'PowerState/*' }
@@ -134,9 +159,14 @@ if ($vmStatus.Code -ne 'PowerState/deallocated') {
     Write-Host "VM is already deallocated." -ForegroundColor Yellow
 }
 
+$stepTimer.Stop()
+$stepTimings['Step 4 – Deallocate VM'] = $stepTimer.Elapsed
+Write-Host "  ⏱  $(Format-Elapsed $stepTimer.Elapsed)" -ForegroundColor DarkGray
+
 # ── Step 5: Enable Encryption at Host ────────────────────────────────────────
 
 Write-Step "Step 5 – Enable Encryption at Host"
+$stepTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
 $vm = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName
 
@@ -154,9 +184,14 @@ if ($vm.SecurityProfile.EncryptionAtHost -eq $true) {
     }
 }
 
+$stepTimer.Stop()
+$stepTimings['Step 5 – Enable EaH'] = $stepTimer.Elapsed
+Write-Host "  ⏱  $(Format-Elapsed $stepTimer.Elapsed)" -ForegroundColor DarkGray
+
 # ── Step 6: Start the VM ──────────────────────────────────────────────────────
 
 Write-Step "Step 6 – Start the VM"
+$stepTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
 if ($PSCmdlet.ShouldProcess("$VMName", "Start-AzVM")) {
     Write-Host "Starting $VMName..."
@@ -164,7 +199,13 @@ if ($PSCmdlet.ShouldProcess("$VMName", "Start-AzVM")) {
     Write-Host "VM started." -ForegroundColor Green
 }
 
+$stepTimer.Stop()
+$stepTimings['Step 6 – Start VM'] = $stepTimer.Elapsed
+Write-Host "  ⏱  $(Format-Elapsed $stepTimer.Elapsed)" -ForegroundColor DarkGray
+
 # ── Summary ───────────────────────────────────────────────────────────────────
+
+$migrationTimer.Stop()
 
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Green
@@ -172,3 +213,11 @@ Write-Host " Migration complete!" -ForegroundColor Green
 Write-Host " VM '$VMName' is now using Encryption at Host." -ForegroundColor Green
 Write-Host " Run 04-Validate-EAH.ps1 to confirm." -ForegroundColor Green
 Write-Host "============================================" -ForegroundColor Green
+Write-Host ""
+Write-Host "Timing Summary" -ForegroundColor Cyan
+Write-Host "──────────────────────────────────────────" -ForegroundColor DarkGray
+foreach ($entry in $stepTimings.GetEnumerator()) {
+    Write-Host ("  {0,-30} {1}" -f $entry.Key, (Format-Elapsed $entry.Value)) -ForegroundColor DarkGray
+}
+Write-Host "──────────────────────────────────────────" -ForegroundColor DarkGray
+Write-Host ("  {0,-30} {1}" -f "Total", (Format-Elapsed $migrationTimer.Elapsed)) -ForegroundColor Cyan
