@@ -1,5 +1,7 @@
 # Az-ADE-EAH-Lab
 
+> **📘 [Start the Lab Walkthrough →](LAB_WALKTHROUGH.md)** — a single-page, step-by-step guide covering every path (Bicep / Terraform × PowerShell / CLI).
+
 A hands-on lab for walking customers through the process of migrating virtual machines from **Azure Disk Encryption (ADE)** to **Encryption at Host (EaH)**. This lab provides repeatable, on-demand templates and scripts so teams can validate their migration process before applying it to production workloads.
 
 > **Why migrate?**  
