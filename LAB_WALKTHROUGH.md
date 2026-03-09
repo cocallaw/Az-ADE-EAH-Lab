@@ -11,6 +11,7 @@ This guide walks you through deploying a lab VM with **Azure Disk Encryption (AD
 | Requirement | Details |
 |-------------|---------|
 | **Azure CLI** 2.50+ *or* **Azure PowerShell** (Az module) 10.0+ | [Install Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) · [Install Az PowerShell](https://learn.microsoft.com/en-us/powershell/azure/install-azure-powershell) |
+| **AzCopy v10+** | Required by the migration script to copy disk data. [Download AzCopy](https://aka.ms/downloadazcopy) and ensure it is in `PATH`. |
 | **Bicep CLI** 0.20+ *(Bicep path only)* | Bundled with Azure CLI, or `az bicep install` |
 | **Terraform** 1.5+ *(Terraform path only)* | [Install Terraform](https://developer.hashicorp.com/terraform/install) |
 | **Azure subscription** | Contributor + Key Vault Administrator permissions |
@@ -200,16 +201,24 @@ bash scripts/cli/02-validate-ade.sh ade-lab-rg <VM-NAME>
 
 ## Step 4 – Migrate from ADE to Encryption at Host
 
-This is the core migration step. The script will:
+> **Important:** Azure does not allow enabling Encryption at Host on a VM whose disks carry the UDE (Unified Data Encryption) flag set by ADE — even after ADE has been disabled. The migration scripts therefore create new managed disks via the Upload+AzCopy method (which produces clean disk objects with no ADE metadata) and build a new VM from those disks with Encryption at Host enabled. **AzCopy v10+ must be installed and in `PATH` before running the script.**
+
+The script performs the following steps:
 
 1. ✅ Verify the EncryptionAtHost feature is registered
-2. ✅ Confirm ADE is currently active
-3. ✅ Disable ADE and decrypt all disks
-4. ✅ Deallocate the VM
-5. ✅ Enable Encryption at Host
-6. ✅ Start the VM back up
+2. ✅ Verify AzCopy is available in `PATH`
+3. ✅ Confirm ADE status and capture the full VM configuration (size, location, NICs, disks, HyperV generation)
+4. ✅ Disable ADE (Windows: all volumes; Linux: data volumes only), then pause to confirm OS-level decryption is complete
+5. ✅ Deallocate the original VM
+6. ✅ Copy all disks (OS + data) to new managed disks via Upload+AzCopy — strips the UDE flag
+7. ✅ Create a new VM from the new disks with Encryption at Host enabled
+8. ✅ Start the new VM
+9. ✅ Verify Encryption at Host is active on the new VM
+10. 🖨 Print ready-to-run cleanup commands for the original VM, disks, and Key Vault
 
-Each step is timed so you can see exactly how long the process takes.
+> **Linux VMs with an ADE-encrypted OS disk:** Disabling ADE on a Linux OS disk is not supported. The script detects this case early and exits with remediation guidance. A new VM with a fresh OS disk must be created manually.
+
+Each step is timed and a full timing summary is printed at the end of the run.
 
 <details>
 <summary><strong>PowerShell</strong></summary>
@@ -218,6 +227,15 @@ Each step is timed so you can see exactly how long the process takes.
 ./scripts/powershell/03-Migrate-ADE-to-EAH.ps1 `
   -ResourceGroupName "ade-lab-rg" `
   -VMName "<VM-NAME>"
+```
+
+The new VM is named `<VM-NAME>-eah` by default. Override with `-NewVMName`:
+
+```powershell
+./scripts/powershell/03-Migrate-ADE-to-EAH.ps1 `
+  -ResourceGroupName "ade-lab-rg" `
+  -VMName "<VM-NAME>" `
+  -NewVMName "<NEW-VM-NAME>"
 ```
 
 **Dry-run** (no changes):
@@ -240,6 +258,12 @@ Each step is timed so you can see exactly how long the process takes.
 bash scripts/cli/03-migrate-ade-to-eah.sh ade-lab-rg <VM-NAME>
 ```
 
+The new VM is named `<VM-NAME>-eah` by default. Override with a third argument:
+
+```bash
+bash scripts/cli/03-migrate-ade-to-eah.sh ade-lab-rg <VM-NAME> <NEW-VM-NAME>
+```
+
 **Dry-run** (no changes):
 
 ```bash
@@ -250,19 +274,21 @@ DRY_RUN=1 bash scripts/cli/03-migrate-ade-to-eah.sh ade-lab-rg <VM-NAME>
 
 </details>
 
-> **⏱ Typical duration:** 10–20 minutes, mostly spent on disk decryption (Step 3) and VM deallocation (Step 4). A timing summary is printed at the end of the run.
+> **⏱ Typical duration:** 30–60 minutes. The disk copy via AzCopy (Step 6) is the longest step and scales with disk size. A timing summary is printed at the end of the run.
+
+> **After the script completes:** The original VM is left deallocated, not deleted. Verify the new VM works correctly before running the cleanup commands printed by the script.
 
 ---
 
 ## Step 5 – Validate Encryption at Host is Active
 
-After migration, confirm that EaH is enabled and ADE has been removed.
+After migration, confirm that EaH is enabled on the **new VM** and that ADE is no longer present.
 
 <details>
 <summary><strong>PowerShell</strong></summary>
 
 ```powershell
-./scripts/powershell/04-Validate-EAH.ps1 -ResourceGroupName "ade-lab-rg" -VMName "<VM-NAME>"
+./scripts/powershell/04-Validate-EAH.ps1 -ResourceGroupName "ade-lab-rg" -VMName "<NEW-VM-NAME>"
 ```
 
 📄 [04-Validate-EAH.ps1](scripts/powershell/04-Validate-EAH.ps1)
@@ -273,7 +299,7 @@ After migration, confirm that EaH is enabled and ADE has been removed.
 <summary><strong>Azure CLI (Bash)</strong></summary>
 
 ```bash
-bash scripts/cli/04-validate-eah.sh ade-lab-rg <VM-NAME>
+bash scripts/cli/04-validate-eah.sh ade-lab-rg <NEW-VM-NAME>
 ```
 
 📄 [04-validate-eah.sh](scripts/cli/04-validate-eah.sh)
@@ -292,7 +318,7 @@ bash scripts/cli/04-validate-eah.sh ade-lab-rg <VM-NAME>
 
 ## Cleanup
 
-Delete the resource group to stop all charges:
+The migration script prints ready-to-run commands at the end of its output for removing the original VM and its disks. Run those first, then delete the resource group to stop all remaining charges:
 
 ```bash
 az group delete --name ade-lab-rg --yes --no-wait
@@ -305,8 +331,12 @@ az group delete --name ade-lab-rg --yes --no-wait
 | Issue | Resolution |
 |-------|-----------|
 | `EncryptionAtHost is not Registered` | Run the Step 1 registration script and wait until the state is `Registered` (can take up to 15 minutes). |
+| `azcopy` / `azcopy not found` | Install AzCopy v10+ from [aka.ms/downloadazcopy](https://aka.ms/downloadazcopy) and ensure it is available in `PATH` before re-running the script. |
 | `KEK_FAILED / RSA 3072 or larger` | Windows Server 2022+ requires a Key Vault key of RSA 3072 or larger. Re-deploy with the latest templates which use RSA 3072. |
-| ADE disable takes a long time | Disk decryption is I/O-intensive. Allow up to 30 minutes for large disks. The script will wait. |
+| ADE disable takes a long time | Disk decryption is I/O-intensive. Allow up to 30 minutes for large disks. The script pauses and asks you to confirm decryption is complete before continuing. |
+| Linux VM with encrypted OS disk | ADE cannot be disabled on a Linux OS disk. The script exits with instructions: create a new Linux VM with EaH enabled, then migrate application data using SCP, rsync, or backup tools. |
+| AzCopy fails during disk copy | Check that the SAS URIs haven't expired (`SAS_EXPIRY_HOURS` / `-SasExpiryHours`, default 24 h) and that the source disk is not attached to a running VM. Re-run the script; it will create new SAS URIs. |
+| New VM not visible / NIC conflict | The script detaches NICs from the original VM before creating the new one. If the script fails mid-way, manually detach the NIC from the original VM in the portal before re-running. |
 | Key Vault soft-delete conflict | If re-deploying to the same resource group, purge or recover the soft-deleted Key Vault first: `az keyvault purge --name <KV-NAME>`. |
 
 ---

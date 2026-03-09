@@ -50,14 +50,17 @@ Az-ADE-EAH-Lab/
 │   • CLI:        scripts/cli/                │
 └───────────────────┬─────────────────────────┘
                     │
-┌───────────────────▼─────────────────────────┐
-│  STEP 3 – Migrate from ADE to EaH          │
-│   • PowerShell: scripts/powershell/         │
-│   • CLI:        scripts/cli/                │
-└───────────────────┬─────────────────────────┘
+┌───────────────────▼─────────────────────────────────────────┐
+│  STEP 3 – Migrate from ADE to EaH (creates a new VM)        │
+│   Disables ADE → copies disks via Upload+AzCopy (no UDE)    │
+│   → creates new VM with Encryption at Host enabled          │
+│   • PowerShell: scripts/powershell/                         │
+│   • CLI:        scripts/cli/                                │
+└───────────────────┬─────────────────────────────────────────┘
                     │
 ┌───────────────────▼─────────────────────────┐
 │  STEP 4 – Validate EaH is active           │
+│   (run against the NEW VM)                  │
 │   • PowerShell: scripts/powershell/         │
 │   • CLI:        scripts/cli/                │
 └─────────────────────────────────────────────┘
@@ -71,6 +74,7 @@ Az-ADE-EAH-Lab/
 |------|-----------------|-------|
 | Azure CLI | 2.50+ | `az --version` |
 | Azure PowerShell (Az module) | 10.0+ | `Get-Module Az -ListAvailable` |
+| AzCopy | v10+ | Required by the migration script. [Download](https://aka.ms/downloadazcopy) — must be in `PATH` |
 | Bicep CLI | 0.20+ | `bicep --version` |
 | Terraform | 1.5+ | Only needed for the Terraform path |
 | Azure Subscription | — | Owner or Contributor + Key Vault access |
@@ -114,6 +118,8 @@ az deployment group create `
   --parameters @parameters.json
 
 # 2. Migrate from ADE to Encryption at Host
+#    Creates a new VM named <VM-NAME>-eah with Encryption at Host enabled.
+#    AzCopy v10+ must be installed and in PATH.
 cd ../../scripts/powershell
 ./03-Migrate-ADE-to-EAH.ps1 `
   -ResourceGroupName <YOUR-RG> `
@@ -129,6 +135,8 @@ terraform init
 terraform apply -var-file="terraform.tfvars"
 
 # 2. Migrate from ADE to Encryption at Host
+#    Creates a new VM named <VM-NAME>-eah with Encryption at Host enabled.
+#    AzCopy v10+ must be installed and in PATH.
 cd ../../scripts/cli
 bash 03-migrate-ade-to-eah.sh <RESOURCE-GROUP> <VM-NAME>
 ```
