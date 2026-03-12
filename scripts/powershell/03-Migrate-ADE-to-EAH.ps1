@@ -250,7 +250,7 @@ if ($osType -eq 'Linux' -and $osEncrypted) {
 # Capture properties needed to recreate the VM
 $vmLocation = $vm.Location
 $vmSize     = $vm.HardwareProfile.VmSize
-$nicIds     = $vm.NetworkProfile.NetworkInterfaces | Select-Object -ExpandProperty Id
+$nicIds     = @($vm.NetworkProfile.NetworkInterfaces | Select-Object -ExpandProperty Id)
 
 $osDisk    = Get-AzDisk -ResourceGroupName $ResourceGroupName -DiskName $vm.StorageProfile.OsDisk.Name
 $hyperVGen = if ($osDisk.HyperVGeneration) { $osDisk.HyperVGeneration } else { 'V1' }
@@ -322,10 +322,10 @@ Write-Host "  ⏱  $(Format-Elapsed $stepTimer.Elapsed)" -ForegroundColor DarkGr
 Write-Step "Step 5 – Deallocate the original VM"
 $stepTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
-$vmStatus = (Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName -Status).Statuses |
-    Where-Object { $_.Code -like 'PowerState/*' }
+$vmStatusObj = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName -Status -ErrorAction SilentlyContinue
+$vmStatus    = if ($vmStatusObj) { $vmStatusObj.Statuses | Where-Object { $_.Code -like 'PowerState/*' } } else { $null }
 
-if ($vmStatus.Code -ne 'PowerState/deallocated') {
+if ($null -eq $vmStatus -or $vmStatus.Code -ne 'PowerState/deallocated') {
     if ($PSCmdlet.ShouldProcess("$VMName", "Stop-AzVM (deallocate)")) {
         Write-Host "Stopping and deallocating '$VMName'..."
         Stop-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName -Force | Out-Null
@@ -398,13 +398,13 @@ $stepTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
 if ($PSCmdlet.ShouldProcess("$NewVMName", "New-AzVM with EncryptionAtHost enabled")) {
 
-    # Detach NICs from the original VM so they can be attached to the new VM.
-    # The original VM stays deallocated and is not deleted at this stage.
-    Write-Host "Detaching NICs from original VM '$VMName' to reuse on new VM..."
-    $originalVm = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName
-    $originalVm.NetworkProfile.NetworkInterfaces.Clear()
-    Update-AzVM -ResourceGroupName $ResourceGroupName -VM $originalVm | Out-Null
-    Write-Host "NICs detached." -ForegroundColor Green
+    # Azure does not allow a VM to have zero NICs, so NICs cannot be detached
+    # via Update-AzVM.  Instead, delete the original VM resource (disks and NICs
+    # are NOT deleted) to release the NICs so they can be attached to the new VM.
+    # The original OS disk and data disks remain as unattached managed disks.
+    Write-Host "Removing original VM resource '$VMName' to release its NICs (disks are preserved)..."
+    Remove-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName -Force | Out-Null
+    Write-Host "Original VM resource removed. Disks and NICs are intact." -ForegroundColor Green
 
     # Build new VM config
     Write-Host "Building VM configuration for '$NewVMName'..."
@@ -456,10 +456,10 @@ Write-Host "  ⏱  $(Format-Elapsed $stepTimer.Elapsed)" -ForegroundColor DarkGr
 Write-Step "Step 8 – Start the new VM"
 $stepTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
-$newVmStatus = (Get-AzVM -ResourceGroupName $ResourceGroupName -Name $NewVMName -Status `
-    -ErrorAction SilentlyContinue).Statuses | Where-Object { $_.Code -like 'PowerState/*' }
+$newVmStatusObj = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $NewVMName -Status -ErrorAction SilentlyContinue
+$newVmStatus    = if ($newVmStatusObj) { $newVmStatusObj.Statuses | Where-Object { $_.Code -like 'PowerState/*' } } else { $null }
 
-if ($newVmStatus.Code -ne 'PowerState/running') {
+if ($null -eq $newVmStatus -or $newVmStatus.Code -ne 'PowerState/running') {
     if ($PSCmdlet.ShouldProcess("$NewVMName", "Start-AzVM")) {
         Write-Host "Starting '$NewVMName'..."
         Start-AzVM -ResourceGroupName $ResourceGroupName -Name $NewVMName | Out-Null
@@ -516,8 +516,8 @@ Write-Host "──────────────────────�
 Write-Host " CLEANUP – After verifying '$NewVMName' works correctly:" -ForegroundColor Yellow
 Write-Host "───────────────────────────────────────────────────────────" -ForegroundColor DarkGray
 Write-Host ""
-Write-Host " # Delete the original VM (disks are NOT removed automatically)" -ForegroundColor DarkGray
-Write-Host " Remove-AzVM -ResourceGroupName '$ResourceGroupName' -Name '$VMName' -Force" -ForegroundColor White
+Write-Host " # The original VM resource was already removed during migration." -ForegroundColor DarkGray
+Write-Host " # Delete the orphaned original disks once the new VM is confirmed working:" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host " # Delete the original OS disk" -ForegroundColor DarkGray
 Write-Host " Remove-AzDisk -ResourceGroupName '$ResourceGroupName' -DiskName '$($osDisk.Name)' -Force" -ForegroundColor White

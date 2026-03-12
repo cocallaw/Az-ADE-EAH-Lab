@@ -8,7 +8,7 @@ These scripts guide you through every step of migrating a VM from **Azure Disk E
 |--------|---------|
 | [`01-Register-EAH-Feature.ps1`](01-Register-EAH-Feature.ps1) | One-time subscription prerequisite – registers the `EncryptionAtHost` feature |
 | [`02-Validate-ADE.ps1`](02-Validate-ADE.ps1) | Confirms ADE is active before migration |
-| [`03-Migrate-ADE-to-EAH.ps1`](03-Migrate-ADE-to-EAH.ps1) | Full migration: disables ADE, deallocates VM, enables EaH, restarts VM |
+| [`03-Migrate-ADE-to-EAH.ps1`](03-Migrate-ADE-to-EAH.ps1) | Full migration: disables ADE, copies disks via Upload+AzCopy, creates new VM with EaH |
 | [`04-Validate-EAH.ps1`](04-Validate-EAH.ps1) | Confirms EaH is active and ADE is fully removed after migration |
 
 ## Prerequisites
@@ -65,14 +65,19 @@ To preview changes without applying them:
 ```
 
 The script will:
-1. Check `EncryptionAtHost` feature is `Registered`
-2. Confirm ADE is active
-3. Run `Disable-AzVMDiskEncryption -VolumeType All`
-4. Deallocate the VM
-5. Set `SecurityProfile.EncryptionAtHost = true` via `Update-AzVM`
-6. Start the VM
+1. Verify the `EncryptionAtHost` feature is `Registered`
+2. Verify `azcopy` v10+ is installed and in `PATH`
+3. Confirm ADE encryption status and capture VM configuration
+4. Disable ADE (`Disable-AzVMDiskEncryption`) and wait for OS-level decryption to complete
+5. Deallocate the VM
+6. Create **new** managed disks via Upload + AzCopy (strips the UDE metadata flag)
+7. Delete the original VM resource to release NICs (disks are preserved)
+8. Create a **new** VM (`<VMName>-eah`) with Encryption at Host, attaching the new disks and original NICs
+9. Start the new VM and verify Encryption at Host is enabled
 
-> ⏱️ The full migration typically takes **10–20 minutes**, most of which is the ADE decryption step.
+> ⏱️ The full migration typically takes **30–60 minutes**, most of which is the disk copy and ADE decryption steps.
+>
+> **Note:** The original VM is removed and a new VM is created. Original disks are preserved as unattached managed disks until you manually clean them up.
 
 ---
 
@@ -102,4 +107,5 @@ The same scripts work for Linux VMs. Replace the VM name accordingly:
 
 - [Migrate from ADE to Encryption at Host](https://learn.microsoft.com/en-us/azure/virtual-machines/disk-encryption-migrate)
 - [Disable-AzVMDiskEncryption](https://learn.microsoft.com/en-us/powershell/module/az.compute/disable-azvmdiskencryption)
-- [Update-AzVM](https://learn.microsoft.com/en-us/powershell/module/az.compute/update-azvm)
+- [New-AzVM](https://learn.microsoft.com/en-us/powershell/module/az.compute/new-azvm)
+- [AzCopy v10](https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10)
