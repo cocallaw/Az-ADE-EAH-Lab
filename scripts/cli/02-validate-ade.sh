@@ -61,10 +61,10 @@ ENCRYPTION_STATUS=$(az vm encryption show \
   -o json 2>/dev/null || echo '{}')
 
 OS_STATE=$(echo "$ENCRYPTION_STATUS" | \
-  python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('osDisk','Unknown'))" 2>/dev/null || echo "Unknown")
+  jq -r '.osDisk // "Unknown"' 2>/dev/null || echo "Unknown")
 
 DATA_STATE=$(echo "$ENCRYPTION_STATUS" | \
-  python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('dataDisks','Unknown'))" 2>/dev/null || echo "Unknown")
+  jq -r '.dataDisks // "Unknown"' 2>/dev/null || echo "Unknown")
 
 ALL_ENCRYPTED=true
 

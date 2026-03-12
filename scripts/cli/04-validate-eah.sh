@@ -83,8 +83,8 @@ ENC_SHOW=$(az vm encryption show \
   --query "{osDisk: osDisk, dataDisks: dataDisk}" \
   -o json 2>/dev/null || echo '{}')
 
-OS_ENC=$(echo "$ENC_SHOW" | python3 -c "import sys,json; print(json.load(sys.stdin).get('osDisk','Unknown'))" 2>/dev/null || echo "Unknown")
-DATA_ENC=$(echo "$ENC_SHOW" | python3 -c "import sys,json; print(json.load(sys.stdin).get('dataDisks','Unknown'))" 2>/dev/null || echo "Unknown")
+OS_ENC=$(echo "$ENC_SHOW" | jq -r '.osDisk // "Unknown"' 2>/dev/null || echo "Unknown")
+DATA_ENC=$(echo "$ENC_SHOW" | jq -r '.dataDisks // "Unknown"' 2>/dev/null || echo "Unknown")
 
 if [[ "$OS_ENC" == "NotEncrypted" || "$OS_ENC" == "NoDiskFound" ]]; then
   echo "  [PASS] OS disk ADE encryption : $OS_ENC"
@@ -109,13 +109,7 @@ DISK_NAMES=$(az vm show \
   --resource-group "$RESOURCE_GROUP" \
   --name "$VM_NAME" \
   --query "[storageProfile.osDisk.name, storageProfile.dataDisks[].name]" \
-  -o json | python3 -c "
-import sys, json
-items = json.load(sys.stdin)
-names = [items[0]] if items[0] else []
-if items[1]: names.extend(items[1])
-print('\n'.join(names))
-" 2>/dev/null || true)
+  -o json | jq -r 'flatten | .[] | select(. != null)' 2>/dev/null || true)
 
 while IFS= read -r DISK_NAME; do
   [[ -z "$DISK_NAME" ]] && continue

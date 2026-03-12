@@ -207,25 +207,15 @@ VM_JSON=$(az vm show \
   --name "$VM_NAME" \
   -o json)
 
-OS_TYPE=$(echo "$VM_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['storageProfile']['osDisk']['osType'])")
-VM_SIZE=$(echo "$VM_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['hardwareProfile']['vmSize'])")
-VM_LOCATION=$(echo "$VM_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['location'])")
-OS_DISK_NAME=$(echo "$VM_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['storageProfile']['osDisk']['name'])")
+OS_TYPE=$(echo "$VM_JSON" | jq -r '.storageProfile.osDisk.osType')
+VM_SIZE=$(echo "$VM_JSON" | jq -r '.hardwareProfile.vmSize')
+VM_LOCATION=$(echo "$VM_JSON" | jq -r '.location')
+OS_DISK_NAME=$(echo "$VM_JSON" | jq -r '.storageProfile.osDisk.name')
 
 # Collect NIC IDs and data disk info as newline-separated values
-NIC_IDS=$(echo "$VM_JSON" | python3 -c "
-import sys, json
-vm = json.load(sys.stdin)
-for nic in vm['networkProfile']['networkInterfaces']:
-    print(nic['id'])
-")
+NIC_IDS=$(echo "$VM_JSON" | jq -r '.networkProfile.networkInterfaces[].id')
 
-DATA_DISK_INFO=$(echo "$VM_JSON" | python3 -c "
-import sys, json
-vm = json.load(sys.stdin)
-for d in vm['storageProfile'].get('dataDisks', []):
-    print(d['name'] + '|' + str(d['lun']))
-")
+DATA_DISK_INFO=$(echo "$VM_JSON" | jq -r '.storageProfile.dataDisks[] | "\(.name)|\(.lun)"')
 
 # Get OS disk details
 OS_DISK_JSON=$(az disk show \
@@ -233,8 +223,8 @@ OS_DISK_JSON=$(az disk show \
   --name "$OS_DISK_NAME" \
   -o json)
 
-OS_DISK_SKU=$(echo "$OS_DISK_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['sku']['name'])")
-HYPER_V_GEN=$(echo "$OS_DISK_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('hyperVGeneration','V1'))")
+OS_DISK_SKU=$(echo "$OS_DISK_JSON" | jq -r '.sku.name')
+HYPER_V_GEN=$(echo "$OS_DISK_JSON" | jq -r '.hyperVGeneration // "V1"')
 
 ENC_SHOW=$(az vm encryption show \
   --resource-group "$RESOURCE_GROUP" \
@@ -242,8 +232,8 @@ ENC_SHOW=$(az vm encryption show \
   --query "{osDisk: osDisk, dataDisks: dataDisk}" \
   -o json 2>/dev/null || echo '{}')
 
-OS_ENC=$(echo "$ENC_SHOW" | python3 -c "import sys,json; print(json.load(sys.stdin).get('osDisk','NotEncrypted'))" 2>/dev/null || echo "NotEncrypted")
-DATA_ENC=$(echo "$ENC_SHOW" | python3 -c "import sys,json; print(json.load(sys.stdin).get('dataDisks','NotEncrypted'))" 2>/dev/null || echo "NotEncrypted")
+OS_ENC=$(echo "$ENC_SHOW" | jq -r '.osDisk // "NotEncrypted"' 2>/dev/null || echo "NotEncrypted")
+DATA_ENC=$(echo "$ENC_SHOW" | jq -r '.dataDisks // "NotEncrypted"' 2>/dev/null || echo "NotEncrypted")
 
 echo "OS Type              : $OS_TYPE"
 echo "OS disk encrypted    : $OS_ENC"
@@ -404,13 +394,17 @@ echo "  ⏱  $(format_elapsed $STEP_ELAPSED)"
 step "Step 7 – Create new VM '$NEW_VM_NAME' with Encryption at Host"
 STEP_START=$SECONDS
 
-# Detach NICs from the original VM so they can be reattached to the new VM.
-echo "Detaching NICs from original VM '$VM_NAME' to reuse on new VM..."
-run az vm nic remove \
+# Azure does not allow a VM to have zero NICs, so NICs cannot be detached
+# individually.  Instead, delete the original VM resource (disks and NICs are
+# NOT deleted) to release the NICs so they can be attached to the new VM.
+# The original OS disk and data disks remain as unattached managed disks.
+echo "Removing original VM resource '$VM_NAME' to release its NICs (disks are preserved)..."
+run az vm delete \
   --resource-group "$RESOURCE_GROUP" \
-  --vm-name "$VM_NAME" \
-  --nics $(echo "$NIC_IDS" | xargs -I{} basename {}) \
-  --output none 2>/dev/null || true
+  --name "$VM_NAME" \
+  --yes \
+  --output none
+echo "Original VM resource removed. Disks and NICs are intact. ✓"
 
 # Build the az vm create command.  The first NIC becomes the primary.
 PRIMARY_NIC=$(echo "$NIC_IDS" | head -n 1)
@@ -530,8 +524,8 @@ echo "────────────────────────�
 echo " CLEANUP – After verifying '$NEW_VM_NAME' works correctly:"
 echo "───────────────────────────────────────────────────────────"
 echo ""
-echo " # Delete the original VM (disks are NOT removed automatically)"
-echo " az vm delete --resource-group '$RESOURCE_GROUP' --name '$VM_NAME' --yes"
+echo " # The original VM resource was already removed during migration."
+echo " # Delete the orphaned original disks once the new VM is confirmed working:"
 echo ""
 echo " # Delete the original OS disk"
 echo " az disk delete --resource-group '$RESOURCE_GROUP' --name '$OS_DISK_NAME' --yes"
