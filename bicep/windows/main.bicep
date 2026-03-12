@@ -43,6 +43,12 @@ param allowedRdpSourceAddress string = 'Deny'
 @description('Unique value passed to forceUpdateTag on the ADE extension. Change this to force re-encryption (e.g. pass a new GUID).')
 param sequenceVersion string = '1.0'
 
+@description('Virtual network address space CIDR.')
+param vnetAddressPrefix string = '10.0.0.0/16'
+
+@description('Subnet address prefix CIDR.')
+param subnetAddressPrefix string = '10.0.0.0/24'
+
 // ---------------------------------------------------------------------------
 // Variables
 // ---------------------------------------------------------------------------
@@ -147,14 +153,14 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-09-01' = {
   properties: {
     addressSpace: {
       addressPrefixes: [
-        '10.0.0.0/16'
+        vnetAddressPrefix
       ]
     }
     subnets: [
       {
         name: subnetName
         properties: {
-          addressPrefix: '10.0.0.0/24'
+          addressPrefix: subnetAddressPrefix
           networkSecurityGroup: {
             id: nsg.id
           }
@@ -200,7 +206,7 @@ resource nic 'Microsoft.Network/networkInterfaces@2023-09-01' = {
 // Virtual Machine
 // ---------------------------------------------------------------------------
 
-resource vm 'Microsoft.Compute/virtualMachines@2023-09-01' = {
+resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
   name: vmName
   location: location
   properties: {
@@ -271,7 +277,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-09-01' = {
 // Azure Disk Encryption VM Extension
 // ---------------------------------------------------------------------------
 
-resource adeExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = {
+resource adeExtension 'Microsoft.Compute/virtualMachines/extensions@2024-07-01' = {
   parent: vm
   name: 'AzureDiskEncryption'
   location: location
