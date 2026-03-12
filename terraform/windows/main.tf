@@ -52,6 +52,10 @@ resource "random_string" "kv_suffix" {
   length  = 6
   upper   = false
   special = false
+
+  keepers = {
+    rg_name = var.resource_group_name
+  }
 }
 
 resource "azurerm_key_vault" "kv" {

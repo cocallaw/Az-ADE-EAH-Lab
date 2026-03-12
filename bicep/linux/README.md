@@ -29,6 +29,7 @@ This Bicep template deploys the **lab starting state**: an Ubuntu 22.04 LTS VM w
 | `vmSize` | No | `Standard_D2s_v5` | VM SKU |
 | `keyVaultAdminObjectId` | **Yes** | — | AAD object ID for Key Vault access |
 | `allowedSshSourceAddress` | No | `Deny` | Source IP/CIDR allowed for SSH, or `Deny` |
+| `deploymentTimestamp` | No | `utcNow()` | Auto-generated; ensures a unique Key Vault name per deployment |
 
 ## Deployment
 

@@ -46,11 +46,14 @@ param vnetAddressPrefix string = '10.0.0.0/16'
 @description('Subnet address prefix CIDR.')
 param subnetAddressPrefix string = '10.0.0.0/24'
 
+@description('DO NOT SUPPLY — auto-generated timestamp that ensures a unique Key Vault name per deployment, avoiding soft-delete conflicts on redeployment.')
+param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
+
 // ---------------------------------------------------------------------------
 // Variables
 // ---------------------------------------------------------------------------
 
-var kvName = '${prefix}-kv-${uniqueString(resourceGroup().id)}'
+var kvName = '${prefix}-kv-${uniqueString(resourceGroup().id, deploymentTimestamp)}'
 var vnetName = '${prefix}-vnet'
 var subnetName = 'default'
 var nsgName = '${prefix}-nsg'

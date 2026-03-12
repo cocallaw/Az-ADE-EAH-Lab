@@ -29,6 +29,7 @@ This Bicep template deploys the **lab starting state**: a Windows Server 2022 VM
 | `vmSize` | No | `Standard_D2s_v5` | VM SKU |
 | `keyVaultAdminObjectId` | **Yes** | — | AAD object ID for Key Vault access |
 | `allowedRdpSourceAddress` | No | `Deny` | Source IP/CIDR allowed for RDP, or `Deny` |
+| `deploymentTimestamp` | No | `utcNow()` | Auto-generated; ensures a unique Key Vault name per deployment |
 
 ## Deployment
 

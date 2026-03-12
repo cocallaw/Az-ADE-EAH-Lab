@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.41.2.15936",
-      "templateHash": "9442615327901071537"
+      "version": "0.40.2.10011",
+      "templateHash": "10800154807013364910"
     }
   },
   "parameters": {
@@ -65,10 +65,31 @@
       "metadata": {
         "description": "Unique value passed to forceUpdateTag on the ADE extension. Change this to force re-encryption (e.g. pass a new GUID)."
       }
+    },
+    "vnetAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/16",
+      "metadata": {
+        "description": "Virtual network address space CIDR."
+      }
+    },
+    "subnetAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/24",
+      "metadata": {
+        "description": "Subnet address prefix CIDR."
+      }
+    },
+    "deploymentTimestamp": {
+      "type": "string",
+      "defaultValue": "[utcNow('yyyyMMddHHmmss')]",
+      "metadata": {
+        "description": "DO NOT SUPPLY — auto-generated timestamp that ensures a unique Key Vault name per deployment, avoiding soft-delete conflicts on redeployment."
+      }
     }
   },
   "variables": {
-    "kvName": "[format('{0}-kv-{1}', parameters('prefix'), uniqueString(resourceGroup().id))]",
+    "kvName": "[format('{0}-kv-{1}', parameters('prefix'), uniqueString(resourceGroup().id, parameters('deploymentTimestamp')))]",
     "vnetName": "[format('{0}-vnet', parameters('prefix'))]",
     "subnetName": "default",
     "nsgName": "[format('{0}-nsg', parameters('prefix'))]",
@@ -169,14 +190,14 @@
       "properties": {
         "addressSpace": {
           "addressPrefixes": [
-            "10.0.0.0/16"
+            "[parameters('vnetAddressPrefix')]"
           ]
         },
         "subnets": [
           {
             "name": "[variables('subnetName')]",
             "properties": {
-              "addressPrefix": "10.0.0.0/24",
+              "addressPrefix": "[parameters('subnetAddressPrefix')]",
               "networkSecurityGroup": {
                 "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]"
               }
@@ -228,7 +249,7 @@
     },
     {
       "type": "Microsoft.Compute/virtualMachines",
-      "apiVersion": "2023-09-01",
+      "apiVersion": "2024-07-01",
       "name": "[variables('vmName')]",
       "location": "[parameters('location')]",
       "properties": {
@@ -305,7 +326,7 @@
     },
     {
       "type": "Microsoft.Compute/virtualMachines/extensions",
-      "apiVersion": "2023-09-01",
+      "apiVersion": "2024-07-01",
       "name": "[format('{0}/{1}', variables('vmName'), 'AzureDiskEncryptionForLinux')]",
       "location": "[parameters('location')]",
       "properties": {

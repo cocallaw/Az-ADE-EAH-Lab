@@ -340,7 +340,7 @@ az group delete --name ade-lab-rg --yes --no-wait
 | New VM not visible / NIC conflict | The script deletes the original VM to release NICs before creating the new one. If the script fails mid-way, manually delete the original VM in the portal (do **not** delete attached disks or NICs) before re-running. |
 | Disk copy timeout | For disks larger than 512 GiB, increase the SAS token lifetime: set `-SasExpiryHours 6` (PowerShell) or `SAS_EXPIRY_SECS=21600` (CLI). Default is 2 hours. |
 | `jq: command not found` (CLI scripts) | Install jq: `sudo apt-get install jq` (Ubuntu/Debian), `brew install jq` (macOS), or see [jq downloads](https://jqlang.github.io/jq/download/). |
-| Key Vault soft-delete conflict | If re-deploying to the same resource group, purge or recover the soft-deleted Key Vault first: `az keyvault purge --name <KV-NAME>`. |
+| Key Vault soft-delete conflict | The Bicep templates use a deployment timestamp to generate a unique Key Vault name on every deployment, avoiding conflicts with soft-deleted vaults. If you still encounter a conflict (e.g. from a manual deployment), purge or recover the soft-deleted vault: `az keyvault purge --name <KV-NAME>`. |
 
 ---
 
