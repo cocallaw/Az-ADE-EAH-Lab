@@ -4,6 +4,8 @@ terraform {
     azurerm = {
       source  = "hashicorp/azurerm"
       version = "~> 3.90"
+      # NOTE: AzureRM 4.x is the current major version but has breaking changes.
+      # See https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/guides/4.0-upgrade-guide
     }
     random = {
       source  = "hashicorp/random"
