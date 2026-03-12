@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   generate:
@@ -28,11 +29,16 @@ jobs:
           git diff --quiet bicep/*/azuredeploy.json && echo "changed=false" >> "$GITHUB_OUTPUT" \
             || echo "changed=true" >> "$GITHUB_OUTPUT"
 
-      - name: Commit updated ARM templates
+      - name: Create Pull Request
         if: steps.diff.outputs.changed == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add bicep/windows/azuredeploy.json bicep/linux/azuredeploy.json
-          git commit -m "chore: regenerate azuredeploy.json from Bicep templates"
-          git push
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore: regenerate azuredeploy.json from Bicep templates"
+          branch: auto/update-arm-templates
+          title: "chore: regenerate ARM templates from Bicep"
+          body: |
+            Auto-generated PR to update ARM templates after Bicep source changes.
+
+            This PR was created automatically by the `generate-arm-templates` workflow.
+            Please review the generated JSON before merging.
+          labels: automated
