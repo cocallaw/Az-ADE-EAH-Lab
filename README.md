@@ -5,7 +5,7 @@
 A hands-on lab for walking customers through the process of migrating virtual machines from **Azure Disk Encryption (ADE)** to **Encryption at Host (EaH)**. This lab provides repeatable, on-demand templates and scripts so teams can validate their migration process before applying it to production workloads.
 
 > **Why migrate?**  
-> Azure Disk Encryption (ADE) is being retired. Microsoft recommends transitioning to [Encryption at Host](https://learn.microsoft.com/en-us/azure/virtual-machines/disk-encryption-overview) as the replacement. For official migration guidance see [Migrate from Azure Disk Encryption to Encryption at Host](https://learn.microsoft.com/en-us/azure/virtual-machines/disk-encryption-migrate).
+> Azure Disk Encryption (ADE) is being retired on **September 15, 2028**. Microsoft recommends transitioning to [Encryption at Host](https://learn.microsoft.com/en-us/azure/virtual-machines/disk-encryption-overview) as the replacement. For official migration guidance see [Migrate from Azure Disk Encryption to Encryption at Host](https://learn.microsoft.com/en-us/azure/virtual-machines/disk-encryption-migrate).
 
 ## Deploy to Azure
 
@@ -75,6 +75,7 @@ Az-ADE-EAH-Lab/
 | Azure CLI | 2.50+ | `az --version` |
 | Azure PowerShell (Az module) | 10.0+ | `Get-Module Az -ListAvailable` |
 | AzCopy | v10+ | Required by the migration script. [Download](https://aka.ms/downloadazcopy) — must be in `PATH` |
+| jq | 1.6+ | Required by CLI migration scripts (JSON parsing). `jq --version` |
 | Bicep CLI | 0.20+ | `bicep --version` |
 | Terraform | 1.5+ | Only needed for the Terraform path |
 | Azure Subscription | — | Owner or Contributor + Key Vault access |

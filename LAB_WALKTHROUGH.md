@@ -12,6 +12,7 @@ This guide walks you through deploying a lab VM with **Azure Disk Encryption (AD
 |-------------|---------|
 | **Azure CLI** 2.50+ *or* **Azure PowerShell** (Az module) 10.0+ | [Install Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) · [Install Az PowerShell](https://learn.microsoft.com/en-us/powershell/azure/install-azure-powershell) |
 | **AzCopy v10+** | Required by the migration script to copy disk data. [Download AzCopy](https://aka.ms/downloadazcopy) and ensure it is in `PATH`. |
+| **jq** *(CLI/Bash path only)* | Required by CLI scripts for JSON parsing. [Install jq](https://jqlang.github.io/jq/download/) |
 | **Bicep CLI** 0.20+ *(Bicep path only)* | Bundled with Azure CLI, or `az bicep install` |
 | **Terraform** 1.5+ *(Terraform path only)* | [Install Terraform](https://developer.hashicorp.com/terraform/install) |
 | **Azure subscription** | Contributor + Key Vault Administrator permissions |
@@ -336,7 +337,9 @@ az group delete --name ade-lab-rg --yes --no-wait
 | ADE disable takes a long time | Disk decryption is I/O-intensive. Allow up to 30 minutes for large disks. The script pauses and asks you to confirm decryption is complete before continuing. |
 | Linux VM with encrypted OS disk | ADE cannot be disabled on a Linux OS disk. The script exits with instructions: create a new Linux VM with EaH enabled, then migrate application data using SCP, rsync, or backup tools. |
 | AzCopy fails during disk copy | Check that the SAS URIs haven't expired (`SAS_EXPIRY_HOURS` / `-SasExpiryHours`, default 24 h) and that the source disk is not attached to a running VM. Re-run the script; it will create new SAS URIs. |
-| New VM not visible / NIC conflict | The script detaches NICs from the original VM before creating the new one. If the script fails mid-way, manually detach the NIC from the original VM in the portal before re-running. |
+| New VM not visible / NIC conflict | The script deletes the original VM to release NICs before creating the new one. If the script fails mid-way, manually delete the original VM in the portal (do **not** delete attached disks or NICs) before re-running. |
+| Disk copy timeout | For disks larger than 512 GiB, increase the SAS token lifetime: set `-SasExpiryHours 6` (PowerShell) or `SAS_EXPIRY_SECS=21600` (CLI). Default is 2 hours. |
+| `jq: command not found` (CLI scripts) | Install jq: `sudo apt-get install jq` (Ubuntu/Debian), `brew install jq` (macOS), or see [jq downloads](https://jqlang.github.io/jq/download/). |
 | Key Vault soft-delete conflict | If re-deploying to the same resource group, purge or recover the soft-deleted Key Vault first: `az keyvault purge --name <KV-NAME>`. |
 
 ---
