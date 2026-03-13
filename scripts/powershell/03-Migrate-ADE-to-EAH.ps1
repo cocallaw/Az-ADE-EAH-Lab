@@ -141,7 +141,9 @@ function Copy-DiskViaUpload {
 
     try {
         Write-Host "  Copying disk data via AzCopy (this may take several minutes)..."
-        azcopy copy $sourceSAS.AccessSAS $targetSAS.AccessSAS --blob-type PageBlob
+        # Capture stdout so azcopy output doesn't contaminate the function return value.
+        # Progress (stderr) still displays in real-time.
+        $null = azcopy copy $sourceSAS.AccessSAS $targetSAS.AccessSAS --blob-type PageBlob
         if ($LASTEXITCODE -ne 0) {
             throw "AzCopy exited with code $LASTEXITCODE. See output above for details."
         }
@@ -298,6 +300,10 @@ if ($osEncrypted -or $dataEncrypted) {
         Write-Host "    lsblk" -ForegroundColor White
         Write-Host "  No encrypted mappings should remain before you continue." -ForegroundColor Yellow
     }
+    Write-Host ""
+    Write-Host "  TIP: You can also run these commands from the Azure portal without" -ForegroundColor Cyan
+    Write-Host "  connecting to the VM. Navigate to the VM > Operations > Run command." -ForegroundColor Cyan
+    Write-Host "  https://learn.microsoft.com/azure/virtual-machines/windows/run-command" -ForegroundColor Cyan
     Write-Host ""
 
     if (-not $WhatIfPreference) {

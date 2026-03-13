@@ -194,7 +194,7 @@ bash scripts/cli/02-validate-ade.sh ade-lab-rg <VM-NAME>
 
 </details>
 
-**Expected output:** OS disk and data disks should show **Encrypted**.
+**Expected output:** OS disk should show **Encrypted**.
 
 > **Default VM names:** `adelab-win-vm` (Windows) or `adelab-lnx-vm` (Linux) when using the default `adelab` prefix.
 
@@ -209,7 +209,7 @@ The script performs the following steps:
 1. ✅ Verify the EncryptionAtHost feature is registered
 2. ✅ Verify AzCopy is available in `PATH`
 3. ✅ Confirm ADE status and capture the full VM configuration (size, location, NICs, disks, HyperV generation)
-4. ✅ Disable ADE (Windows: all volumes; Linux: data volumes only), then pause to confirm OS-level decryption is complete
+4. ✅ Disable ADE (Windows: all volumes; Linux: data volumes only), then pause to confirm OS-level decryption is complete — you can verify via RDP/SSH or the [Azure portal Run Command](https://learn.microsoft.com/azure/virtual-machines/windows/run-command) feature
 5. ✅ Deallocate the original VM
 6. ✅ Copy all disks (OS + data) to new managed disks via Upload+AzCopy — strips the UDE flag
 7. ✅ Create a new VM from the new disks with Encryption at Host enabled
@@ -313,7 +313,7 @@ bash scripts/cli/04-validate-eah.sh ade-lab-rg <NEW-VM-NAME>
 |-------|----------|
 | `securityProfile.encryptionAtHost` | `true` |
 | ADE extension | Absent or disabled |
-| OS / data disk encryption state | Platform-managed (EaH) |
+| OS disk encryption state | Platform-managed (EaH) |
 
 ---
 

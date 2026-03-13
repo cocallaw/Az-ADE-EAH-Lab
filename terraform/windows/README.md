@@ -15,7 +15,6 @@ This Terraform module deploys the **lab starting state**: a Windows Server 2022 
 | Public IP | `<prefix>-pip` |
 | Network Interface | `<prefix>-nic` |
 | Windows Virtual Machine | `<prefix>-win-vm` |
-| Managed Data Disk | `<prefix>-datadisk0` |
 | ADE VM Extension | `AzureDiskEncryption` |
 
 ## Extension details
@@ -26,7 +25,7 @@ This Terraform module deploys the **lab starting state**: a Windows Server 2022 
 | Type | `AzureDiskEncryption` |
 | typeHandlerVersion | `2.2` |
 | KeyEncryptionAlgorithm | `RSA-OAEP` |
-| VolumeType | `All` (OS + Data disks) |
+| VolumeType | `All` (OS disk) |
 
 The `KeyEncryptionKeyURL` setting is set to the **versioned** key URI (`azurerm_key_vault_key.ade_key.id`) as required by the ADE extension schema.
 

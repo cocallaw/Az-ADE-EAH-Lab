@@ -246,18 +246,6 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
         }
         deleteOption: 'Delete'
       }
-      dataDisks: [
-        {
-          lun: 0
-          name: '${vmName}-datadisk0'
-          createOption: 'Empty'
-          diskSizeGB: 32
-          managedDisk: {
-            storageAccountType: 'Premium_LRS'
-          }
-          deleteOption: 'Delete'
-        }
-      ]
     }
     networkProfile: {
       networkInterfaces: [
@@ -302,8 +290,8 @@ resource adeExtension 'Microsoft.Compute/virtualMachines/extensions@2024-07-01' 
       KeyEncryptionKeyURL: adeKey.properties.keyUriWithVersion
       KekVaultResourceId: keyVault.id
       KeyEncryptionAlgorithm: 'RSA-OAEP'
-      // 'All' encrypts both OS and data disks. OS-disk encryption on Linux requires
-      // swap to be disabled before enabling ADE. For data-only encryption use 'Data'.
+      // 'All' encrypts all volumes. OS-disk encryption on Linux requires
+      // swap to be disabled before enabling ADE.
       VolumeType: 'All'
     }
   }

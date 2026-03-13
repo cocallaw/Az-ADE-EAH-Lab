@@ -305,6 +305,10 @@ if [[ "$OS_ENC" == "Encrypted" || "$DATA_ENC" == "Encrypted" ]]; then
     echo "  No encrypted mappings should remain before you continue."
   fi
   echo ""
+  echo "  TIP: You can also run these commands from the Azure portal without"
+  echo "  connecting to the VM. Navigate to the VM > Operations > Run command."
+  echo "  https://learn.microsoft.com/azure/virtual-machines/windows/run-command"
+  echo ""
 
   if [[ "$DRY_RUN" != "1" ]]; then
     read -r -p "  Confirm OS-level decryption is fully complete on '$VM_NAME'. Continue? (yes/no): " answer

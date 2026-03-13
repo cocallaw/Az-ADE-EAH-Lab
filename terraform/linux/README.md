@@ -15,7 +15,6 @@ This Terraform module deploys the **lab starting state**: an Ubuntu 22.04 LTS VM
 | Public IP | `<prefix>-pip` |
 | Network Interface | `<prefix>-nic` |
 | Linux Virtual Machine | `<prefix>-lnx-vm` |
-| Managed Data Disk | `<prefix>-datadisk0` |
 | ADE VM Extension | `AzureDiskEncryptionForLinux` |
 
 ## Extension details
@@ -26,9 +25,9 @@ This Terraform module deploys the **lab starting state**: an Ubuntu 22.04 LTS VM
 | Type | `AzureDiskEncryptionForLinux` |
 | typeHandlerVersion | `1.1` (no Microsoft Entra ID properties required) |
 | KeyEncryptionAlgorithm | `RSA-OAEP` |
-| VolumeType | `All` (OS + Data disks) |
+| VolumeType | `All` (OS disk) |
 
-> **Note:** `VolumeType: All` encrypts both the OS disk and data disks. OS-disk encryption on Linux requires the swap file to be disabled before enabling ADE. If you only want to encrypt data disks, change `VolumeType` to `Data`.
+> **Note:** `VolumeType: All` encrypts all volumes. OS-disk encryption on Linux requires the swap file to be disabled before enabling ADE.
 
 The `KeyEncryptionKeyURL` setting is set to the **versioned** key URI (`azurerm_key_vault_key.ade_key.id`) as required by the ADE extension schema.
 

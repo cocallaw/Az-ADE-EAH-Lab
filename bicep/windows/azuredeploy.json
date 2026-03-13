@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.40.2.10011",
-      "templateHash": "10820539924260933416"
+      "templateHash": "11413097031024233262"
     }
   },
   "parameters": {
@@ -281,19 +281,7 @@
               "storageAccountType": "Premium_LRS"
             },
             "deleteOption": "Delete"
-          },
-          "dataDisks": [
-            {
-              "lun": 0,
-              "name": "[format('{0}-datadisk0', variables('vmName'))]",
-              "createOption": "Empty",
-              "diskSizeGB": 32,
-              "managedDisk": {
-                "storageAccountType": "Premium_LRS"
-              },
-              "deleteOption": "Delete"
-            }
-          ]
+          }
         },
         "networkProfile": {
           "networkInterfaces": [
