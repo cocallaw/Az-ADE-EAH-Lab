@@ -31,7 +31,8 @@
 #   bash 03-migrate-ade-to-eah.sh <RESOURCE_GROUP> <VM_NAME> [NEW_VM_NAME] [SUBSCRIPTION_ID]
 #
 #   NEW_VM_NAME  defaults to "<VM_NAME>-eah"
-#   SAS_EXPIRY_HOURS (env var) controls SAS URI validity for disk copy. Default: 24
+#   SAS_EXPIRY_HOURS (env var) controls SAS URI validity for disk copy. Default: 2
+#   For disks larger than 512 GiB, increase to 6-24 hours.
 #
 # Dry-run (no changes applied):
 #   DRY_RUN=1 bash 03-migrate-ade-to-eah.sh <RESOURCE_GROUP> <VM_NAME>
@@ -46,7 +47,32 @@ VM_NAME="${2:?Usage: $0 <RESOURCE_GROUP> <VM_NAME> [NEW_VM_NAME] [SUBSCRIPTION_I
 NEW_VM_NAME="${3:-}"
 SUBSCRIPTION_ID="${4:-}"
 DRY_RUN="${DRY_RUN:-0}"
-SAS_EXPIRY_HOURS="${SAS_EXPIRY_HOURS:-24}"
+SAS_EXPIRY_HOURS="${SAS_EXPIRY_HOURS:-2}"
+
+# Validate SAS_EXPIRY_HOURS is between 1 and 72
+if ! [[ "$SAS_EXPIRY_HOURS" =~ ^[0-9]+$ ]] || (( SAS_EXPIRY_HOURS < 1 || SAS_EXPIRY_HOURS > 72 )); then
+  echo "ERROR: SAS_EXPIRY_HOURS must be an integer between 1 and 72 (got: $SAS_EXPIRY_HOURS)." >&2
+  exit 1
+fi
+
+# ── SAS grant tracking and cleanup trap ───────────────────────────────────────
+# Track disk names with active SAS grants so they can be revoked on unexpected exit.
+
+SAS_GRANTED_DISKS=()
+
+cleanup_sas() {
+  if [[ ${#SAS_GRANTED_DISKS[@]} -eq 0 ]]; then
+    return
+  fi
+  echo ""
+  echo "Revoking outstanding SAS grants..."
+  for disk_name in "${SAS_GRANTED_DISKS[@]}"; do
+    az disk revoke-access --resource-group "$RESOURCE_GROUP" --name "$disk_name" --output none 2>/dev/null || true
+  done
+  SAS_GRANTED_DISKS=()
+}
+
+trap cleanup_sas EXIT
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -116,6 +142,7 @@ copy_disk_via_upload() {
       --access-level Read \
       --duration-in-seconds "$sas_expiry_secs" \
       --query "accessSas" -o tsv)
+    SAS_GRANTED_DISKS+=("$src_disk_name")
 
     tgt_sas=$(az disk grant-access \
       --resource-group "$RESOURCE_GROUP" \
@@ -123,12 +150,10 @@ copy_disk_via_upload() {
       --access-level Write \
       --duration-in-seconds "$sas_expiry_secs" \
       --query "accessSas" -o tsv)
+    SAS_GRANTED_DISKS+=("$tgt_disk_name")
 
     echo "  Copying disk data via azcopy (this may take several minutes)..."
     if ! azcopy copy "$src_sas" "$tgt_sas" --blob-type PageBlob; then
-      # Revoke SAS before exiting on failure
-      az disk revoke-access --resource-group "$RESOURCE_GROUP" --name "$src_disk_name" --output none 2>/dev/null || true
-      az disk revoke-access --resource-group "$RESOURCE_GROUP" --name "$tgt_disk_name" --output none 2>/dev/null || true
       echo "ERROR: azcopy failed for disk '$src_disk_name'. See output above." >&2
       exit 1
     fi
@@ -136,6 +161,9 @@ copy_disk_via_upload() {
     echo "  Revoking SAS access..."
     az disk revoke-access --resource-group "$RESOURCE_GROUP" --name "$src_disk_name" --output none
     az disk revoke-access --resource-group "$RESOURCE_GROUP" --name "$tgt_disk_name" --output none
+    # Remove from tracking array after successful revocation
+    SAS_GRANTED_DISKS=("${SAS_GRANTED_DISKS[@]/$src_disk_name/}")
+    SAS_GRANTED_DISKS=("${SAS_GRANTED_DISKS[@]/$tgt_disk_name/}")
     echo "  Disk copy complete. ✓"
   fi
 }

@@ -88,13 +88,17 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
         objectId: keyVaultAdminObjectId
         permissions: {
           keys: [
-            'all'
+            'create'
+            'delete'
+            'get'
+            'list'
+            'wrapKey'
+            'unwrapKey'
           ]
           secrets: [
-            'all'
-          ]
-          certificates: [
-            'all'
+            'get'
+            'list'
+            'set'
           ]
         }
       }

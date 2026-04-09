@@ -41,7 +41,8 @@
     (Optional) Target subscription. Defaults to the current Az context.
 
 .PARAMETER SasExpiryHours
-    (Optional) Validity period in hours for SAS URIs used during disk copy. Default: 24.
+    (Optional) Validity period in hours for SAS URIs used during disk copy. Default: 2.
+    For disks larger than 512 GiB, increase to 6-24 hours.
 
 .PARAMETER WhatIf
     Dry-run mode – shows what would happen without making any changes.
@@ -78,7 +79,7 @@ param (
     [string]$SubscriptionId,
 
     [ValidateRange(1, 72)]
-    [int]$SasExpiryHours = 24
+    [int]$SasExpiryHours = 2
 )
 
 Set-StrictMode -Version Latest
