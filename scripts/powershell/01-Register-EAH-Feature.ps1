@@ -1,3 +1,5 @@
+#Requires -Modules Az.Accounts, Az.Resources
+
 <#
 .SYNOPSIS
     Registers the EncryptionAtHost feature on the current Azure subscription.
@@ -28,7 +30,6 @@
 
 [CmdletBinding()]
 param (
-    [Parameter(Mandatory = $false)]
     [string]$SubscriptionId
 )
 

@@ -1,3 +1,5 @@
+#Requires -Modules Az.Compute
+
 <#
 .SYNOPSIS
     Validates that Azure Disk Encryption (ADE) is enabled on a VM.
@@ -26,13 +28,14 @@
 
 [CmdletBinding()]
 param (
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory)]
+    [ValidateNotNullOrEmpty()]
     [string]$ResourceGroupName,
 
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory)]
+    [ValidateNotNullOrEmpty()]
     [string]$VMName,
 
-    [Parameter(Mandatory = $false)]
     [string]$SubscriptionId
 )
 

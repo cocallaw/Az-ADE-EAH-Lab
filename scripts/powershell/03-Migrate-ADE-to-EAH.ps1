@@ -61,21 +61,22 @@
     Reference : https://learn.microsoft.com/en-us/azure/virtual-machines/disk-encryption-migrate
 #>
 
+#Requires -Modules Az.Accounts, Az.Compute
+
 [CmdletBinding(SupportsShouldProcess)]
 param (
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory)]
+    [ValidateNotNullOrEmpty()]
     [string]$ResourceGroupName,
 
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory)]
+    [ValidateNotNullOrEmpty()]
     [string]$VMName,
 
-    [Parameter(Mandatory = $false)]
     [string]$NewVMName,
 
-    [Parameter(Mandatory = $false)]
     [string]$SubscriptionId,
 
-    [Parameter(Mandatory = $false)]
     [ValidateRange(1, 72)]
     [int]$SasExpiryHours = 24
 )
@@ -84,7 +85,12 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Write-Step {
-    param([string]$Message)
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Message
+    )
     Write-Host ""
     Write-Host "──────────────────────────────────────────" -ForegroundColor DarkGray
     Write-Host $Message -ForegroundColor Cyan
@@ -92,7 +98,11 @@ function Write-Step {
 }
 
 function Format-Elapsed {
-    param([TimeSpan]$Span)
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [TimeSpan]$Span
+    )
     if ($Span.TotalSeconds -lt 60) { return "$([math]::Round($Span.TotalSeconds,1))s" }
     return "$([math]::Floor($Span.TotalMinutes))m $($Span.Seconds)s"
 }
@@ -105,15 +115,36 @@ function Copy-DiskViaUpload {
       A 512-byte offset is added to UploadSizeInBytes because Azure omits the VHD
       footer when it reports DiskSizeBytes; the copy would fail without this offset.
     #>
+    [CmdletBinding()]
     param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
         [string]$SourceDiskName,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
         [string]$SourceRG,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
         [string]$TargetDiskName,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
         [string]$TargetRG,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
         [string]$Location,
+
         [string]$OsType,           # 'Windows', 'Linux', or $null/$empty for data disks
         [string]$HyperVGeneration, # 'V1', 'V2', or $null/$empty for data disks
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
         [string]$SkuName,
+
+        [Parameter(Mandatory)]
         [int]$SasExpirySeconds
     )
 

@@ -1,3 +1,5 @@
+#Requires -Modules Az.Compute
+
 <#
 .SYNOPSIS
     Validates that Encryption at Host (EaH) is enabled on a VM and ADE is removed.
@@ -27,13 +29,14 @@
 
 [CmdletBinding()]
 param (
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory)]
+    [ValidateNotNullOrEmpty()]
     [string]$ResourceGroupName,
 
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory)]
+    [ValidateNotNullOrEmpty()]
     [string]$VMName,
 
-    [Parameter(Mandatory = $false)]
     [string]$SubscriptionId
 )
 
