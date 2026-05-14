@@ -217,7 +217,7 @@ The script performs the following steps:
 9. ✅ Verify Encryption at Host is active on the new VM
 10. 🖨 Print ready-to-run cleanup commands for the original VM, disks, and Key Vault
 
-> **Linux VMs with an ADE-encrypted OS disk:** Disabling ADE on a Linux OS disk is not supported. The script detects this case early and exits with remediation guidance. A new VM with a fresh OS disk must be created manually.
+> **Linux VMs with an ADE-encrypted OS disk:** Disabling ADE on a Linux OS disk is not supported. The script detects this case early and directs you to `03b-migrate-linux-os-disk.sh` / `03b-Migrate-Linux-OS-Disk.ps1` (see Step 4b below).
 
 Each step is timed and a full timing summary is printed at the end of the run.
 
@@ -278,6 +278,65 @@ DRY_RUN=1 bash scripts/cli/03-migrate-ade-to-eah.sh ade-lab-rg <VM-NAME>
 > **⏱ Typical duration:** 30–60 minutes. The disk copy via AzCopy (Step 6) is the longest step and scales with disk size. A timing summary is printed at the end of the run.
 
 > **After the script completes:** The original VM is left deallocated, not deleted. Verify the new VM works correctly before running the cleanup commands printed by the script.
+
+---
+
+## Step 4b – Linux OS Disk Migration (Alternative Path)
+
+> **When to use:** If you deployed the **Linux** lab variant and Step 4 exited with "ALTERNATIVE PATH REQUIRED", use this step instead. ADE cannot be disabled on a Linux OS disk, so this script creates a fresh VM from a marketplace image with EaH enabled and migrates only the data disks.
+
+<details>
+<summary><strong>PowerShell</strong></summary>
+
+```powershell
+./scripts/powershell/03b-Migrate-Linux-OS-Disk.ps1 `
+  -ResourceGroupName "ade-lab-rg" `
+  -VMName "adelab-lnx-vm" `
+  -SshPublicKey "~/.ssh/id_rsa.pub"
+```
+
+Override the VM name or image:
+
+```powershell
+./scripts/powershell/03b-Migrate-Linux-OS-Disk.ps1 `
+  -ResourceGroupName "ade-lab-rg" `
+  -VMName "adelab-lnx-vm" `
+  -SshPublicKey "~/.ssh/id_rsa.pub" `
+  -NewVMName "adelab-lnx-vm-eah" `
+  -Image "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest"
+```
+
+📄 [03b-Migrate-Linux-OS-Disk.ps1](scripts/powershell/03b-Migrate-Linux-OS-Disk.ps1)
+
+</details>
+
+<details>
+<summary><strong>Azure CLI (Bash)</strong></summary>
+
+```bash
+bash scripts/cli/03b-migrate-linux-os-disk.sh ade-lab-rg adelab-lnx-vm ~/.ssh/id_rsa.pub
+```
+
+Override the new VM name and image:
+
+```bash
+bash scripts/cli/03b-migrate-linux-os-disk.sh ade-lab-rg adelab-lnx-vm ~/.ssh/id_rsa.pub "adelab-lnx-vm-eah" "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest"
+```
+
+📄 [03b-migrate-linux-os-disk.sh](scripts/cli/03b-migrate-linux-os-disk.sh)
+
+</details>
+
+**What this script does differently from Step 4:**
+
+| Aspect | Step 4 (standard) | Step 4b (Linux OS disk) |
+|--------|--------------------|--------------------------|
+| OS disk | Copied via Upload+AzCopy | Fresh from marketplace image |
+| Data disks | Copied via Upload+AzCopy | Copied via Upload+AzCopy |
+| Post-migration | VM boots with original OS | OS must be reconfigured manually |
+| When to use | Windows VMs, or Linux with unencrypted OS | Linux with ADE-encrypted OS disk |
+
+> ⚠️ **Post-migration:** The new VM has a fresh OS installation. After the script completes, SSH in and follow the printed checklist to mount data disks (using `/dev/disk/azure/scsi1/lunX` or UUID with `nofail`), reinstall packages, and restore configurations.
 
 ---
 

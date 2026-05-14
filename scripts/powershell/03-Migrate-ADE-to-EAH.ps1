@@ -266,14 +266,19 @@ Write-Host "Data disks encrypted : $dataEncrypted ($($adeStatus.DataVolumesEncry
 if ($osType -eq 'Linux' -and $osEncrypted) {
     Write-Host ""
     Write-Host "╔══════════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
-    Write-Host "║  LINUX VM WITH ENCRYPTED OS DISK – MANUAL MIGRATION REQUIRED   ║" -ForegroundColor Yellow
+    Write-Host "║  LINUX VM WITH ENCRYPTED OS DISK – ALTERNATIVE PATH REQUIRED   ║" -ForegroundColor Yellow
     Write-Host "╠══════════════════════════════════════════════════════════════════╣" -ForegroundColor Yellow
     Write-Host "║                                                                  ║" -ForegroundColor Yellow
-    Write-Host "║  Disabling ADE on a Linux OS disk is not supported. You must:   ║" -ForegroundColor Yellow
+    Write-Host "║  Disabling ADE on a Linux OS disk is not supported.             ║" -ForegroundColor Yellow
+    Write-Host "║  Use 03b-Migrate-Linux-OS-Disk.ps1 instead, which:              ║" -ForegroundColor Yellow
     Write-Host "║                                                                  ║" -ForegroundColor Yellow
-    Write-Host "║  1. Create a new Linux VM with Encryption at Host enabled.       ║" -ForegroundColor Yellow
-    Write-Host "║  2. Reinstall or restore the OS environment on the new VM.       ║" -ForegroundColor Yellow
-    Write-Host "║  3. Migrate application data using SCP, rsync, or backup tools.  ║" -ForegroundColor Yellow
+    Write-Host "║  1. Creates a new Linux VM with EaH from a marketplace image.   ║" -ForegroundColor Yellow
+    Write-Host "║  2. Copies data disks via Upload+AzCopy (strips UDE metadata).  ║" -ForegroundColor Yellow
+    Write-Host "║  3. Provides a post-migration checklist for OS reconfiguration.  ║" -ForegroundColor Yellow
+    Write-Host "║                                                                  ║" -ForegroundColor Yellow
+    Write-Host "║  Usage:                                                          ║" -ForegroundColor Yellow
+    Write-Host "║    .\03b-Migrate-Linux-OS-Disk.ps1 -ResourceGroupName <RG> \    ║" -ForegroundColor Yellow
+    Write-Host "║        -VMName <VM> -SshPublicKey <KEY>                          ║" -ForegroundColor Yellow
     Write-Host "║                                                                  ║" -ForegroundColor Yellow
     Write-Host "║  Reference: https://aka.ms/disk-encryption-migrate              ║" -ForegroundColor Yellow
     Write-Host "╚══════════════════════════════════════════════════════════════════╝" -ForegroundColor Yellow

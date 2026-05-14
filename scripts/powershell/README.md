@@ -9,6 +9,7 @@ These scripts guide you through every step of migrating a VM from **Azure Disk E
 | [`01-Register-EAH-Feature.ps1`](01-Register-EAH-Feature.ps1) | One-time subscription prerequisite – registers the `EncryptionAtHost` feature |
 | [`02-Validate-ADE.ps1`](02-Validate-ADE.ps1) | Confirms ADE is active before migration |
 | [`03-Migrate-ADE-to-EAH.ps1`](03-Migrate-ADE-to-EAH.ps1) | Full migration: disables ADE, copies disks via Upload+AzCopy, creates new VM with EaH |
+| [`03b-Migrate-Linux-OS-Disk.ps1`](03b-Migrate-Linux-OS-Disk.ps1) | Linux OS disk path: creates fresh VM with EaH, migrates data disks only |
 | [`04-Validate-EAH.ps1`](04-Validate-EAH.ps1) | Confirms EaH is active and ADE is fully removed after migration |
 
 ## Prerequisites
@@ -78,6 +79,40 @@ The script will:
 > ⏱️ The full migration typically takes **30–60 minutes**, most of which is the disk copy and ADE decryption steps.
 >
 > **Note:** The original VM is removed and a new VM is created. Original disks are preserved as unattached managed disks until you manually clean them up.
+
+---
+
+### Step 3b – Linux OS Disk Migration (alternative path)
+
+If the migration script detects a Linux VM with an ADE-encrypted OS disk, it exits and directs you to use the alternative path. ADE cannot be disabled on a Linux OS disk, so a fresh VM must be created:
+
+```powershell
+.\03b-Migrate-Linux-OS-Disk.ps1 -ResourceGroupName "ade-lab-rg" -VMName "adelab-lnx-vm" `
+    -SshPublicKey "~/.ssh/id_rsa.pub"
+```
+
+This script:
+1. Creates a **new** Linux VM from a marketplace image with Encryption at Host enabled
+2. Copies data disks via Upload+AzCopy (stripping UDE metadata)
+3. Attaches copied data disks to the new VM
+4. Provides a post-migration checklist for OS reconfiguration
+
+To specify a custom image or new VM name:
+
+```powershell
+.\03b-Migrate-Linux-OS-Disk.ps1 -ResourceGroupName "ade-lab-rg" -VMName "adelab-lnx-vm" `
+    -SshPublicKey "~/.ssh/id_rsa.pub" -NewVMName "my-new-vm" `
+    -Image "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest"
+```
+
+Dry-run:
+
+```powershell
+.\03b-Migrate-Linux-OS-Disk.ps1 -ResourceGroupName "ade-lab-rg" -VMName "adelab-lnx-vm" `
+    -SshPublicKey "~/.ssh/id_rsa.pub" -WhatIf
+```
+
+> ⚠️ **Important:** The new VM has a fresh OS. Application packages, configs, cron jobs, and systemd units must be reinstalled/restored manually. The script provides a detailed checklist at the end.
 
 ---
 
