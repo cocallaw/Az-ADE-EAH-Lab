@@ -408,7 +408,11 @@ if ($PSCmdlet.ShouldProcess("$ResourceGroupName disks", "Copy all VM disks via U
     if ($dataDisks.Count -gt 1) {
         Write-Host "Copying $($dataDisks.Count) data disks in parallel..."
 
-        $copyJobs = foreach ($dataDiskRef in $dataDisks) {
+        # Save Az context to a temp file for jobs to restore
+    $azCtxFile = [System.IO.Path]::GetTempFileName()
+    Save-AzContext -Path $azCtxFile -Force | Out-Null
+
+    $copyJobs = foreach ($dataDiskRef in $dataDisks) {
             $srcDisk         = Get-AzDisk -ResourceGroupName $ResourceGroupName -DiskName $dataDiskRef.Name
             $newDataDiskName = "$($srcDisk.Name)-eah"
             Write-Host "Data disk (LUN $($dataDiskRef.Lun)): $($srcDisk.Name) → $newDataDiskName"
@@ -422,12 +426,15 @@ if ($PSCmdlet.ShouldProcess("$ResourceGroupName disks", "Copy all VM disks via U
                 SkuName          = $srcDisk.Sku.Name
                 SasExpirySeconds = $sasExpirySecs
                 Lun              = $dataDiskRef.Lun
+                AzContextFile    = $azCtxFile
             }
 
             Start-Job -ScriptBlock {
                 param($p)
-                # Re-import module in job context
+                # Restore Az context in job process
+                Import-Module Az.Accounts -ErrorAction Stop
                 Import-Module Az.Compute -ErrorAction Stop
+                Import-AzContext -Path $p.AzContextFile -ErrorAction Stop | Out-Null
 
                 $sourceDisk = Get-AzDisk -ResourceGroupName $p.SourceRG -DiskName $p.SourceDiskName
                 $diskConfig = New-AzDiskConfig `
@@ -467,6 +474,7 @@ if ($PSCmdlet.ShouldProcess("$ResourceGroupName disks", "Copy all VM disks via U
             Write-Host "  Disk '$($result.TargetDiskName)' at LUN $($result.Lun) complete. ✓"
         }
         $copyJobs | Remove-Job -Force
+        Remove-Item $azCtxFile -Force -ErrorAction SilentlyContinue
     } elseif ($dataDisks.Count -eq 1) {
         # Single data disk — copy sequentially
         $dataDiskRef = $dataDisks[0]

@@ -161,9 +161,12 @@ copy_disk_via_upload() {
     echo "  Revoking SAS access..."
     az disk revoke-access --resource-group "$RESOURCE_GROUP" --name "$src_disk_name" --output none
     az disk revoke-access --resource-group "$RESOURCE_GROUP" --name "$tgt_disk_name" --output none
-    # Remove from tracking array after successful revocation
-    SAS_GRANTED_DISKS=("${SAS_GRANTED_DISKS[@]/$src_disk_name/}")
-    SAS_GRANTED_DISKS=("${SAS_GRANTED_DISKS[@]/$tgt_disk_name/}")
+    # Remove revoked disks from tracking array
+    local new_arr=()
+    for d in "${SAS_GRANTED_DISKS[@]}"; do
+      [[ "$d" != "$src_disk_name" && "$d" != "$tgt_disk_name" ]] && new_arr+=("$d")
+    done
+    SAS_GRANTED_DISKS=("${new_arr[@]+"${new_arr[@]}"}")
     echo "  Disk copy complete. ✓"
   fi
 }
@@ -412,6 +415,8 @@ if [[ -n "$DATA_DISK_INFO" ]]; then
         --query "sku.name" -o tsv)
       new_data_disk_name="${disk_name}-eah"
       echo "Data disk (LUN $lun): $disk_name → $new_data_disk_name"
+      # Track disk names in parent for cleanup trap (subshells can't update parent arrays)
+      SAS_GRANTED_DISKS+=("$disk_name" "$new_data_disk_name")
       copy_disk_via_upload \
         "$disk_name" \
         "$new_data_disk_name" \
@@ -434,6 +439,15 @@ if [[ -n "$DATA_DISK_INFO" ]]; then
       echo "ERROR: One or more parallel disk copies failed. See output above." >&2
       exit 1
     fi
+    # Parallel copies completed — revoke SAS grants tracked in parent
+    while IFS='|' read -r new_name lun src_name; do
+      [[ -z "$new_name" ]] && continue
+      az disk revoke-access --resource-group "$RESOURCE_GROUP" --name "$src_name" --output none 2>/dev/null || true
+      az disk revoke-access --resource-group "$RESOURCE_GROUP" --name "$new_name" --output none 2>/dev/null || true
+    done < <(printf '%s\n' "${COPY_DISK_NAMES[@]}")
+    # Clear tracked disks after successful revocation
+    SAS_GRANTED_DISKS=()
+
     NEW_DATA_DISK_INFO=("${COPY_DISK_NAMES[@]}")
   else
     # Single data disk — copy sequentially (no benefit from parallelism)
