@@ -94,6 +94,27 @@ if ($status.DataVolumesEncrypted -ne 'Encrypted') {
 Write-Host ""
 if ($allEncrypted) {
     Write-Host "RESULT: ADE is active and all disks are encrypted." -ForegroundColor Green
+
+    # In-VM validation via Run Command
+    Write-Host ""
+    Write-Host "── In-VM encryption verification (via Invoke-AzVMRunCommand) ──" -ForegroundColor Cyan
+    try {
+        if ($osType -eq 'Windows') {
+            Write-Host "Running manage-bde -status inside the VM..."
+            $rcResult = Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $VMName `
+                -CommandId 'RunPowerShellScript' -ScriptString 'manage-bde -status' -ErrorAction Stop
+        } else {
+            Write-Host "Running lsblk -f inside the VM..."
+            $rcResult = Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $VMName `
+                -CommandId 'RunShellScript' -ScriptString 'lsblk -f && echo "---" && ls /dev/mapper/ 2>/dev/null' -ErrorAction Stop
+        }
+        $rcOutput = $rcResult.Value | ForEach-Object { $_.Message } | Out-String
+        Write-Host $rcOutput
+    } catch {
+        Write-Host "[Run Command failed – VM agent may not be ready: $_]" -ForegroundColor Yellow
+    }
+    Write-Host ""
+
     Write-Host "You can now proceed to 03-Migrate-ADE-to-EAH.ps1"
     exit 0
 } else {

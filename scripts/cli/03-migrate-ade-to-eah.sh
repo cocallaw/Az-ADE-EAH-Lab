@@ -327,19 +327,43 @@ if [[ "$OS_ENC" == "Encrypted" || "$DATA_ENC" == "Encrypted" ]]; then
   echo "  continues in the background and may take time to complete."
   echo ""
   if [[ "$OS_TYPE" == "Windows" ]]; then
-    echo "  Connect to the VM and run the following as Administrator:"
-    echo "    manage-bde -status"
-    echo "  All volumes must show 'Fully Decrypted' before you continue."
+    echo "  Verifying decryption status in-VM via Run Command..."
+    echo "  (Running manage-bde -status inside the VM)"
+    RC_OUTPUT=$(az vm run-command invoke \
+      --resource-group "$RESOURCE_GROUP" \
+      --name "$VM_NAME" \
+      --command-id RunPowerShellScript \
+      --scripts "manage-bde -status" \
+      --query "value[0].message" -o tsv 2>/dev/null || echo "[Run Command failed – check manually]")
+    echo "$RC_OUTPUT"
+    echo ""
+    if echo "$RC_OUTPUT" | grep -qi "Fully Decrypted"; then
+      echo "  ✅ In-VM check: volumes report 'Fully Decrypted'."
+    else
+      echo "  ⚠️  In-VM check: could not confirm 'Fully Decrypted' status."
+      echo "  Verify manually via RDP before continuing."
+    fi
   else
-    echo "  Connect to the VM and run:"
-    echo "    sudo cryptsetup status /dev/mapper/<device-name>"
-    echo "    lsblk"
-    echo "  No encrypted mappings should remain before you continue."
+    echo "  Verifying decryption status in-VM via Run Command..."
+    echo "  (Running lsblk -f inside the VM)"
+    RC_OUTPUT=$(az vm run-command invoke \
+      --resource-group "$RESOURCE_GROUP" \
+      --name "$VM_NAME" \
+      --command-id RunShellScript \
+      --scripts "lsblk -f && echo '---' && ls /dev/mapper/ 2>/dev/null" \
+      --query "value[0].message" -o tsv 2>/dev/null || echo "[Run Command failed – check manually]")
+    echo "$RC_OUTPUT"
+    echo ""
+    if echo "$RC_OUTPUT" | grep -q "^\[Run Command failed"; then
+      echo "  ⚠️  Run Command failed — could not verify in-VM decryption status."
+      echo "  Verify manually via SSH before continuing."
+    elif echo "$RC_OUTPUT" | grep -qi "crypto_LUKS"; then
+      echo "  ⚠️  In-VM check: crypto_LUKS still detected on some volumes."
+      echo "  Wait for decryption to complete before continuing."
+    else
+      echo "  ✅ In-VM check: no crypto_LUKS mappings found on data volumes."
+    fi
   fi
-  echo ""
-  echo "  TIP: You can also run these commands from the Azure portal without"
-  echo "  connecting to the VM. Navigate to the VM > Operations > Run command."
-  echo "  https://learn.microsoft.com/azure/virtual-machines/windows/run-command"
   echo ""
 
   if [[ "$DRY_RUN" != "1" ]]; then

@@ -120,6 +120,28 @@ while IFS= read -r DISK_NAME; do
   echo "  Disk: $DISK_NAME  →  encryption.type: $ENC_TYPE"
 done <<< "$DISK_NAMES"
 
+# ── Check 5: In-VM encryption verification via Run Command ───────────────────
+
+echo ""
+echo "In-VM encryption verification (via az vm run-command):"
+
+if [[ "$OS_TYPE" == "Windows" ]]; then
+  RC_OUTPUT=$(az vm run-command invoke \
+    --resource-group "$RESOURCE_GROUP" \
+    --name "$VM_NAME" \
+    --command-id RunPowerShellScript \
+    --scripts "manage-bde -status; Get-BitLockerVolume | Format-List" \
+    --query "value[0].message" -o tsv 2>/dev/null || echo "[Run Command failed – VM agent may not be ready]")
+else
+  RC_OUTPUT=$(az vm run-command invoke \
+    --resource-group "$RESOURCE_GROUP" \
+    --name "$VM_NAME" \
+    --command-id RunShellScript \
+    --scripts "lsblk -f && echo '---' && ls /dev/mapper/ 2>/dev/null && echo '---' && mount | grep crypt" \
+    --query "value[0].message" -o tsv 2>/dev/null || echo "[Run Command failed – VM agent may not be ready]")
+fi
+echo "$RC_OUTPUT"
+
 # ── Result ────────────────────────────────────────────────────────────────────
 
 echo ""

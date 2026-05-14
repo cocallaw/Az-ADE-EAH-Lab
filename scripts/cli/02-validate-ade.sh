@@ -87,6 +87,30 @@ fi
 echo ""
 if [[ "$ALL_ENCRYPTED" == "true" ]]; then
   echo "RESULT: ADE is active and all disks are encrypted."
+
+  # In-VM validation via Run Command
+  echo ""
+  echo "── In-VM encryption verification (via az vm run-command) ──"
+  if [[ "$OS_TYPE" == "Windows" ]]; then
+    echo "Running manage-bde -status inside the VM..."
+    RC_OUTPUT=$(az vm run-command invoke \
+      --resource-group "$RESOURCE_GROUP" \
+      --name "$VM_NAME" \
+      --command-id RunPowerShellScript \
+      --scripts "manage-bde -status" \
+      --query "value[0].message" -o tsv 2>/dev/null || echo "[Run Command failed – VM agent may not be ready]")
+  else
+    echo "Running lsblk -f inside the VM..."
+    RC_OUTPUT=$(az vm run-command invoke \
+      --resource-group "$RESOURCE_GROUP" \
+      --name "$VM_NAME" \
+      --command-id RunShellScript \
+      --scripts "lsblk -f && echo '---' && ls /dev/mapper/ 2>/dev/null" \
+      --query "value[0].message" -o tsv 2>/dev/null || echo "[Run Command failed – VM agent may not be ready]")
+  fi
+  echo "$RC_OUTPUT"
+  echo ""
+
   echo "You can now proceed to 03-migrate-ade-to-eah.sh"
   exit 0
 else
