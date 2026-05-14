@@ -166,8 +166,12 @@ copy_disk_via_upload() {
     echo "  Revoking SAS access..."
     az disk revoke-access --resource-group "$RESOURCE_GROUP" --name "$src_disk_name" --output none
     az disk revoke-access --resource-group "$RESOURCE_GROUP" --name "$tgt_disk_name" --output none
-    SAS_GRANTED_DISKS=("${SAS_GRANTED_DISKS[@]/$src_disk_name/}")
-    SAS_GRANTED_DISKS=("${SAS_GRANTED_DISKS[@]/$tgt_disk_name/}")
+    # Remove revoked disks from tracking array
+    local new_arr=()
+    for d in "${SAS_GRANTED_DISKS[@]}"; do
+      [[ "$d" != "$src_disk_name" && "$d" != "$tgt_disk_name" ]] && new_arr+=("$d")
+    done
+    SAS_GRANTED_DISKS=("${new_arr[@]+"${new_arr[@]}"}")
     echo "  Disk copy complete. ✓"
   fi
 }
@@ -280,9 +284,10 @@ echo "Data disk count      : $(echo "$DATA_DISK_INFO" | grep -c . 2>/dev/null ||
 
 if [[ "$OS_ENC" != "Encrypted" ]]; then
   echo ""
-  echo "WARNING: OS disk is not ADE-encrypted ('$OS_ENC')."
-  echo "You may be able to use 03-migrate-ade-to-eah.sh (standard path) instead."
-  echo "Continuing anyway for data disk migration..."
+  echo "ERROR: OS disk is not ADE-encrypted ('$OS_ENC')." >&2
+  echo "This script is for Linux VMs with ADE-encrypted OS disks that cannot be" >&2
+  echo "disabled. Use 03-migrate-ade-to-eah.sh instead (standard non-destructive path)." >&2
+  exit 1
 fi
 
 STEP_ELAPSED=$(( SECONDS - STEP_START ))
@@ -303,13 +308,28 @@ if [[ -n "$DATA_DISK_INFO" && "$DATA_ENC" == "Encrypted" ]]; then
   if [[ "$DRY_RUN" != "1" ]]; then
     echo ""
     echo "  ADE data-volume decryption initiated. This can take 10–30+ minutes."
-    echo "  Waiting for ADE extension provisioning to complete..."
-    az vm wait \
-      --resource-group "$RESOURCE_GROUP" \
-      --name "$VM_NAME" \
-      --updated \
-      --timeout 1800 2>/dev/null || true
-    echo "  ADE disable provisioned. ✓"
+    echo "  Polling decryption status..."
+    local poll_timeout=1800 poll_elapsed=0 poll_interval=30 decrypted=false
+    while (( poll_elapsed < poll_timeout )); do
+      sleep $poll_interval
+      poll_elapsed=$(( poll_elapsed + poll_interval ))
+      CURRENT_DATA_ENC=$(az vm encryption show \
+        --resource-group "$RESOURCE_GROUP" \
+        --name "$VM_NAME" \
+        --query "dataDisk" -o tsv 2>/dev/null || echo "Unknown")
+      if [[ "$CURRENT_DATA_ENC" == "NotEncrypted" ]]; then
+        decrypted=true
+        break
+      fi
+      echo "    Waiting... (${poll_elapsed}s elapsed, status: $CURRENT_DATA_ENC)"
+    done
+
+    if [[ "$decrypted" == "true" ]]; then
+      echo "  ADE data-volume decryption complete. ✓"
+    else
+      echo "  ⚠️  Timeout reached (${poll_timeout}s). Decryption may still be in progress." >&2
+      echo "  Verify manually before continuing." >&2
+    fi
     echo ""
     echo "  ⚠️  Confirm decryption is fully complete before continuing."
     echo "     SSH into the VM or check via portal → Run Command:"

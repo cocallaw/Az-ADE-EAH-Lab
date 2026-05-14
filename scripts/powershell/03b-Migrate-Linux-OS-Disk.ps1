@@ -272,8 +272,8 @@ Write-Host "Data disk count      : $($dataDisks.Count)"
 
 if (-not $osEncrypted) {
     Write-Host ""
-    Write-Host "WARNING: OS disk is not ADE-encrypted. You may be able to use 03-Migrate-ADE-to-EAH.ps1 instead." -ForegroundColor Yellow
-    Write-Host "Continuing anyway for data disk migration..."
+    Write-Error "OS disk is not ADE-encrypted. This script is for Linux VMs with ADE-encrypted OS disks that cannot be disabled. Use 03-Migrate-ADE-to-EAH.ps1 instead (standard non-destructive path)."
+    exit 1
 }
 
 $stepTimer.Stop()
@@ -290,20 +290,27 @@ if ($dataDisks.Count -gt 0 -and $dataEncrypted) {
             -VolumeType Data -Force | Out-Null
 
         Write-Host "  ADE data-volume decryption initiated. Waiting for completion..."
-        # Wait for extension provisioning
         $timeout = 1800
         $elapsed = 0
         $interval = 30
+        $decrypted = $false
         while ($elapsed -lt $timeout) {
             Start-Sleep -Seconds $interval
             $elapsed += $interval
             $currentStatus = Get-AzVMDiskEncryptionStatus -ResourceGroupName $ResourceGroupName -VMName $VMName
             if ($currentStatus.DataVolumesEncrypted -eq 'NotEncrypted') {
+                $decrypted = $true
                 break
             }
             Write-Host "    Waiting... ($elapsed`s elapsed, status: $($currentStatus.DataVolumesEncrypted))"
         }
-        Write-Host "  ADE data-volume decryption complete. ✓"
+
+        if ($decrypted) {
+            Write-Host "  ADE data-volume decryption complete. ✓" -ForegroundColor Green
+        } else {
+            Write-Host "  ⚠️  Timeout reached (${timeout}s). Decryption may still be in progress." -ForegroundColor Yellow
+            Write-Host "  Verify manually before continuing." -ForegroundColor Yellow
+        }
         Write-Host ""
         Write-Host "  ⚠️  Confirm decryption is fully complete at the OS level." -ForegroundColor Yellow
         Write-Host "     SSH into the VM and run: lsblk -f" -ForegroundColor Yellow
