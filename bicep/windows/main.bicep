@@ -319,3 +319,18 @@ output publicIpAddress string = publicIp.properties.ipAddress
 
 @description('Resource Group name.')
 output resourceGroupName string = resourceGroup().name
+
+@description('Name of the OS managed disk.')
+output osDiskName string = vm.properties.storageProfile.osDisk.name
+
+@description('Resource ID of the OS managed disk.')
+output osDiskId string = vm.properties.storageProfile.osDisk.managedDisk.id
+
+@description('Resource ID of the network interface.')
+output nicId string = nic.id
+
+@description('Resource ID of the subnet.')
+output subnetId string = '${vnet.id}/subnets/${subnetName}'
+
+@description('VM size SKU.')
+output vmSize string = vm.properties.hardwareProfile.vmSize
