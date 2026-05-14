@@ -117,6 +117,27 @@ foreach ($disk in $allDisks) {
     }
 }
 
+# ── Check 5: In-VM encryption verification via Run Command ───────────────────
+
+Write-Host ""
+Write-Host "In-VM encryption verification (via Invoke-AzVMRunCommand):" -ForegroundColor Cyan
+
+try {
+    if ($osType -eq 'Windows') {
+        $rcResult = Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $VMName `
+            -CommandId 'RunPowerShellScript' `
+            -ScriptString 'manage-bde -status; Get-BitLockerVolume | Format-List' -ErrorAction Stop
+    } else {
+        $rcResult = Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $VMName `
+            -CommandId 'RunShellScript' `
+            -ScriptString 'lsblk -f && echo "---" && ls /dev/mapper/ 2>/dev/null && echo "---" && mount | grep crypt' -ErrorAction Stop
+    }
+    $rcOutput = $rcResult.Value | ForEach-Object { $_.Message } | Out-String
+    Write-Host $rcOutput
+} catch {
+    Write-Host "[Run Command failed – VM agent may not be ready: $_]" -ForegroundColor Yellow
+}
+
 # ── Result ────────────────────────────────────────────────────────────────────
 
 Write-Host ""

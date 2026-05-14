@@ -321,21 +321,37 @@ if ($osEncrypted -or $dataEncrypted) {
     Write-Host "  IMPORTANT: The portal now shows 'SSE + PMK' but OS-level decryption" -ForegroundColor Yellow
     Write-Host "  continues in the background and may take time to complete." -ForegroundColor Yellow
     Write-Host ""
-    if ($osType -eq 'Windows') {
-        Write-Host "  Connect to the VM and run the following as Administrator:" -ForegroundColor Yellow
-        Write-Host "    manage-bde -status" -ForegroundColor White
-        Write-Host "  All volumes must show 'Fully Decrypted' before you continue." -ForegroundColor Yellow
+    try {
+        if ($osType -eq 'Windows') {
+            Write-Host "  Verifying decryption status in-VM via Run Command..." -ForegroundColor Cyan
+            Write-Host "  (Running manage-bde -status inside the VM)"
+            $rcResult = Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $VMName `
+                -CommandId 'RunPowerShellScript' -ScriptString 'manage-bde -status' -ErrorAction Stop
+            $rcOutput = $rcResult.Value | ForEach-Object { $_.Message } | Out-String
+            Write-Host $rcOutput
+            if ($rcOutput -match 'Fully Decrypted') {
+                Write-Host "  ✅ In-VM check: volumes report 'Fully Decrypted'." -ForegroundColor Green
+            } else {
+                Write-Host "  ⚠️  In-VM check: could not confirm 'Fully Decrypted' status." -ForegroundColor Yellow
+                Write-Host "  Verify manually via RDP before continuing." -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "  Verifying decryption status in-VM via Run Command..." -ForegroundColor Cyan
+            Write-Host "  (Running lsblk -f inside the VM)"
+            $rcResult = Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $VMName `
+                -CommandId 'RunShellScript' -ScriptString 'lsblk -f && echo "---" && ls /dev/mapper/ 2>/dev/null' -ErrorAction Stop
+            $rcOutput = $rcResult.Value | ForEach-Object { $_.Message } | Out-String
+            Write-Host $rcOutput
+            if ($rcOutput -match 'crypto_LUKS') {
+                Write-Host "  ⚠️  In-VM check: crypto_LUKS still detected on some volumes." -ForegroundColor Yellow
+                Write-Host "  Wait for decryption to complete before continuing." -ForegroundColor Yellow
+            } else {
+                Write-Host "  ✅ In-VM check: no crypto_LUKS mappings found on data volumes." -ForegroundColor Green
+            }
+        }
+    } catch {
+        Write-Host "  [Run Command failed – check manually: $_]" -ForegroundColor Yellow
     }
-    else {
-        Write-Host "  Connect to the VM and run:" -ForegroundColor Yellow
-        Write-Host "    sudo cryptsetup status /dev/mapper/<device-name>" -ForegroundColor White
-        Write-Host "    lsblk" -ForegroundColor White
-        Write-Host "  No encrypted mappings should remain before you continue." -ForegroundColor Yellow
-    }
-    Write-Host ""
-    Write-Host "  TIP: You can also run these commands from the Azure portal without" -ForegroundColor Cyan
-    Write-Host "  connecting to the VM. Navigate to the VM > Operations > Run command." -ForegroundColor Cyan
-    Write-Host "  https://learn.microsoft.com/azure/virtual-machines/windows/run-command" -ForegroundColor Cyan
     Write-Host ""
 
     if (-not $WhatIfPreference) {
