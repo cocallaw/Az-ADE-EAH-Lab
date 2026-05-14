@@ -350,7 +350,10 @@ if [[ "$OS_ENC" == "Encrypted" || "$DATA_ENC" == "Encrypted" ]]; then
       --query "value[0].message" -o tsv 2>/dev/null || echo "[Run Command failed – check manually]")
     echo "$RC_OUTPUT"
     echo ""
-    if echo "$RC_OUTPUT" | grep -qi "crypto_LUKS"; then
+    if echo "$RC_OUTPUT" | grep -q "^\[Run Command failed"; then
+      echo "  ⚠️  Run Command failed — could not verify in-VM decryption status."
+      echo "  Verify manually via SSH before continuing."
+    elif echo "$RC_OUTPUT" | grep -qi "crypto_LUKS"; then
       echo "  ⚠️  In-VM check: crypto_LUKS still detected on some volumes."
       echo "  Wait for decryption to complete before continuing."
     else
