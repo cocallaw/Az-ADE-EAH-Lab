@@ -417,12 +417,14 @@ if [[ -n "$DATA_DISK_INFO" ]]; then
       echo "Data disk (LUN $lun): $disk_name → $new_data_disk_name"
       # Track disk names in parent for cleanup trap (subshells can't update parent arrays)
       SAS_GRANTED_DISKS+=("$disk_name" "$new_data_disk_name")
-      copy_disk_via_upload \
+      # Clear SAS tracking in subshell to prevent inherited EXIT trap from
+      # revoking SAS grants belonging to other parallel copies
+      (SAS_GRANTED_DISKS=(); copy_disk_via_upload \
         "$disk_name" \
         "$new_data_disk_name" \
         "" \
         "" \
-        "$src_sku" &
+        "$src_sku") &
       COPY_PIDS+=($!)
       COPY_DISK_NAMES+=("${new_data_disk_name}|${lun}|${disk_name}")
     done <<< "$DATA_DISK_INFO"

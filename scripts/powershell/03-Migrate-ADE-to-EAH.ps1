@@ -409,72 +409,81 @@ if ($PSCmdlet.ShouldProcess("$ResourceGroupName disks", "Copy all VM disks via U
         Write-Host "Copying $($dataDisks.Count) data disks in parallel..."
 
         # Save Az context to a temp file for jobs to restore
-    $azCtxFile = [System.IO.Path]::GetTempFileName()
-    Save-AzContext -Path $azCtxFile -Force | Out-Null
+        $azCtxFile = [System.IO.Path]::GetTempFileName()
+        Save-AzContext -Path $azCtxFile -Force | Out-Null
 
-    $copyJobs = foreach ($dataDiskRef in $dataDisks) {
-            $srcDisk         = Get-AzDisk -ResourceGroupName $ResourceGroupName -DiskName $dataDiskRef.Name
-            $newDataDiskName = "$($srcDisk.Name)-eah"
-            Write-Host "Data disk (LUN $($dataDiskRef.Lun)): $($srcDisk.Name) → $newDataDiskName"
+        try {
+            $copyJobs = foreach ($dataDiskRef in $dataDisks) {
+                $srcDisk         = Get-AzDisk -ResourceGroupName $ResourceGroupName -DiskName $dataDiskRef.Name
+                $newDataDiskName = "$($srcDisk.Name)-eah"
+                Write-Host "Data disk (LUN $($dataDiskRef.Lun)): $($srcDisk.Name) → $newDataDiskName"
 
-            $jobParams = @{
-                SourceDiskName   = $srcDisk.Name
-                SourceRG         = $ResourceGroupName
-                TargetDiskName   = $newDataDiskName
-                TargetRG         = $ResourceGroupName
-                Location         = $vmLocation
-                SkuName          = $srcDisk.Sku.Name
-                SasExpirySeconds = $sasExpirySecs
-                Lun              = $dataDiskRef.Lun
-                AzContextFile    = $azCtxFile
-            }
-
-            Start-Job -ScriptBlock {
-                param($p)
-                # Restore Az context in job process
-                Import-Module Az.Accounts -ErrorAction Stop
-                Import-Module Az.Compute -ErrorAction Stop
-                Import-AzContext -Path $p.AzContextFile -ErrorAction Stop | Out-Null
-
-                $sourceDisk = Get-AzDisk -ResourceGroupName $p.SourceRG -DiskName $p.SourceDiskName
-                $diskConfig = New-AzDiskConfig `
-                    -Location $p.Location `
-                    -CreateOption Upload `
-                    -UploadSizeInBytes ($sourceDisk.DiskSizeBytes + 512) `
-                    -SkuName $p.SkuName
-                New-AzDisk -ResourceGroupName $p.TargetRG -DiskName $p.TargetDiskName -Disk $diskConfig | Out-Null
-
-                $srcSas = Grant-AzDiskAccess -ResourceGroupName $p.SourceRG -DiskName $p.SourceDiskName `
-                    -Access Read -DurationInSecond $p.SasExpirySeconds
-                $tgtSas = Grant-AzDiskAccess -ResourceGroupName $p.TargetRG -DiskName $p.TargetDiskName `
-                    -Access Write -DurationInSecond $p.SasExpirySeconds
-
-                try {
-                    $null = azcopy copy $srcSas.AccessSAS $tgtSas.AccessSAS --blob-type PageBlob
-                    if ($LASTEXITCODE -ne 0) { throw "AzCopy failed for $($p.SourceDiskName)" }
-                } finally {
-                    Revoke-AzDiskAccess -ResourceGroupName $p.SourceRG -DiskName $p.SourceDiskName -ErrorAction SilentlyContinue | Out-Null
-                    Revoke-AzDiskAccess -ResourceGroupName $p.TargetRG -DiskName $p.TargetDiskName -ErrorAction SilentlyContinue | Out-Null
+                $jobParams = @{
+                    SourceDiskName   = $srcDisk.Name
+                    SourceRG         = $ResourceGroupName
+                    TargetDiskName   = $newDataDiskName
+                    TargetRG         = $ResourceGroupName
+                    Location         = $vmLocation
+                    SkuName          = $srcDisk.Sku.Name
+                    SasExpirySeconds = $sasExpirySecs
+                    Lun              = $dataDiskRef.Lun
+                    AzContextFile    = $azCtxFile
                 }
 
-                return @{ TargetDiskName = $p.TargetDiskName; Lun = $p.Lun }
-            } -ArgumentList $jobParams
-        }
+                Start-Job -ScriptBlock {
+                    param($p)
+                    # Restore Az context in job process
+                    Import-Module Az.Accounts -ErrorAction Stop
+                    Import-Module Az.Compute -ErrorAction Stop
+                    Import-AzContext -Path $p.AzContextFile -ErrorAction Stop | Out-Null
 
-        # Wait for all parallel jobs and collect results
-        $copyJobs | Wait-Job | Out-Null
-        foreach ($job in $copyJobs) {
-            if ($job.State -eq 'Failed') {
-                $errMsg = $job | Receive-Job -ErrorAction SilentlyContinue 2>&1
-                Write-Error "Parallel disk copy job failed: $errMsg"
+                    $sourceDisk = Get-AzDisk -ResourceGroupName $p.SourceRG -DiskName $p.SourceDiskName
+                    $diskConfig = New-AzDiskConfig `
+                        -Location $p.Location `
+                        -CreateOption Upload `
+                        -UploadSizeInBytes ($sourceDisk.DiskSizeBytes + 512) `
+                        -SkuName $p.SkuName
+                    New-AzDisk -ResourceGroupName $p.TargetRG -DiskName $p.TargetDiskName -Disk $diskConfig | Out-Null
+
+                    $srcSas = Grant-AzDiskAccess -ResourceGroupName $p.SourceRG -DiskName $p.SourceDiskName `
+                        -Access Read -DurationInSecond $p.SasExpirySeconds
+                    $tgtSas = Grant-AzDiskAccess -ResourceGroupName $p.TargetRG -DiskName $p.TargetDiskName `
+                        -Access Write -DurationInSecond $p.SasExpirySeconds
+
+                    try {
+                        $null = azcopy copy $srcSas.AccessSAS $tgtSas.AccessSAS --blob-type PageBlob
+                        if ($LASTEXITCODE -ne 0) { throw "AzCopy failed for $($p.SourceDiskName)" }
+                    } finally {
+                        Revoke-AzDiskAccess -ResourceGroupName $p.SourceRG -DiskName $p.SourceDiskName -ErrorAction SilentlyContinue | Out-Null
+                        Revoke-AzDiskAccess -ResourceGroupName $p.TargetRG -DiskName $p.TargetDiskName -ErrorAction SilentlyContinue | Out-Null
+                    }
+
+                    return @{ TargetDiskName = $p.TargetDiskName; Lun = $p.Lun }
+                } -ArgumentList $jobParams
             }
-            $result = $job | Receive-Job
-            $newDisk = Get-AzDisk -ResourceGroupName $ResourceGroupName -DiskName $result.TargetDiskName
-            $newDiskMap["data_$($result.Lun)"] = @{ Disk = $newDisk; Lun = $result.Lun }
-            Write-Host "  Disk '$($result.TargetDiskName)' at LUN $($result.Lun) complete. ✓"
+
+            # Wait for all parallel jobs and collect results
+            $copyJobs | Wait-Job | Out-Null
+            $failedJobs = @()
+            foreach ($job in $copyJobs) {
+                $result = $job | Receive-Job -ErrorAction SilentlyContinue -ErrorVariable jobErrors
+                if ($job.State -eq 'Failed' -or $jobErrors.Count -gt 0) {
+                    $failedJobs += $job
+                    Write-Host "  ❌ Job for disk copy failed: $($jobErrors -join '; ')" -ForegroundColor Red
+                    continue
+                }
+                $newDisk = Get-AzDisk -ResourceGroupName $ResourceGroupName -DiskName $result.TargetDiskName
+                $newDiskMap["data_$($result.Lun)"] = @{ Disk = $newDisk; Lun = $result.Lun }
+                Write-Host "  Disk '$($result.TargetDiskName)' at LUN $($result.Lun) complete. ✓"
+            }
+            $copyJobs | Remove-Job -Force
+
+            if ($failedJobs.Count -gt 0) {
+                throw "$($failedJobs.Count) parallel disk copy job(s) failed. See output above."
+            }
+        } finally {
+            Remove-Item $azCtxFile -Force -ErrorAction SilentlyContinue
         }
-        $copyJobs | Remove-Job -Force
-        Remove-Item $azCtxFile -Force -ErrorAction SilentlyContinue
     } elseif ($dataDisks.Count -eq 1) {
         # Single data disk — copy sequentially
         $dataDiskRef = $dataDisks[0]
