@@ -108,11 +108,7 @@ if (-not $NewVMName) { $NewVMName = "$VMName-eah" }
 # Resolve SSH public key (accept file path or raw key string)
 $isFilePath = $false
 try {
-    if ([System.IO.Path]::IsPathRooted($SshPublicKey) -or
-        ($SshPublicKey -match '^[~./\\]') -and
-        (Test-Path $SshPublicKey -ErrorAction SilentlyContinue)) {
-        $isFilePath = $true
-    }
+    $isFilePath = Test-Path $SshPublicKey -PathType Leaf -ErrorAction SilentlyContinue
 } catch {
     # Not a valid path — treat as raw key
 }
