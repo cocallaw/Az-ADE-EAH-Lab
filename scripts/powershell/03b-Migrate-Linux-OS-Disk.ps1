@@ -106,9 +106,19 @@ $ErrorActionPreference = 'Stop'
 if (-not $NewVMName) { $NewVMName = "$VMName-eah" }
 
 # Resolve SSH public key (accept file path or raw key string)
-if (Test-Path $SshPublicKey -ErrorAction SilentlyContinue) {
-    $SshKeyData = Get-Content $SshPublicKey -Raw
-    $SshKeyData = $SshKeyData.Trim()
+$isFilePath = $false
+try {
+    if ([System.IO.Path]::IsPathRooted($SshPublicKey) -or
+        ($SshPublicKey -match '^[~./\\]') -and
+        (Test-Path $SshPublicKey -ErrorAction SilentlyContinue)) {
+        $isFilePath = $true
+    }
+} catch {
+    # Not a valid path — treat as raw key
+}
+
+if ($isFilePath) {
+    $SshKeyData = (Get-Content $SshPublicKey -Raw).Trim()
 } else {
     $SshKeyData = $SshPublicKey
 }

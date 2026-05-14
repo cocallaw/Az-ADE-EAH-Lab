@@ -309,7 +309,7 @@ if [[ -n "$DATA_DISK_INFO" && "$DATA_ENC" == "Encrypted" ]]; then
     echo ""
     echo "  ADE data-volume decryption initiated. This can take 10–30+ minutes."
     echo "  Polling decryption status..."
-    local poll_timeout=1800 poll_elapsed=0 poll_interval=30 decrypted=false
+    poll_timeout=1800; poll_elapsed=0; poll_interval=30; decrypted=false
     while (( poll_elapsed < poll_timeout )); do
       sleep $poll_interval
       poll_elapsed=$(( poll_elapsed + poll_interval ))
@@ -449,15 +449,19 @@ STEP_NAMES+=("Step 8 – Create new VM"); STEP_TIMES+=("$STEP_ELAPSED")
 step "Step 9 – Verify Encryption at Host is active"
 STEP_START=$SECONDS
 
-EAH_ENABLED=$(az vm show \
-  --resource-group "$RESOURCE_GROUP" \
-  --name "$NEW_VM_NAME" \
-  --query "securityProfile.encryptionAtHost" -o tsv 2>/dev/null || echo "false")
-
-if [[ "$EAH_ENABLED" == "true" ]]; then
-  echo "  ✅ Encryption at Host is ENABLED on '$NEW_VM_NAME'."
+if [[ "$DRY_RUN" == "1" ]]; then
+  echo "  [DRY RUN] Skipping verification — VM was not created."
 else
-  echo "  ⚠️  Encryption at Host is '$EAH_ENABLED'. Verify VM creation succeeded." >&2
+  EAH_ENABLED=$(az vm show \
+    --resource-group "$RESOURCE_GROUP" \
+    --name "$NEW_VM_NAME" \
+    --query "securityProfile.encryptionAtHost" -o tsv 2>/dev/null || echo "false")
+
+  if [[ "$EAH_ENABLED" == "true" ]]; then
+    echo "  ✅ Encryption at Host is ENABLED on '$NEW_VM_NAME'."
+  else
+    echo "  ⚠️  Encryption at Host is '$EAH_ENABLED'. Verify VM creation succeeded." >&2
+  fi
 fi
 
 STEP_ELAPSED=$(( SECONDS - STEP_START ))
