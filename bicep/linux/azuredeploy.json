@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.41.2.15936",
-      "templateHash": "16126327262431400261"
+      "version": "0.42.1.51946",
+      "templateHash": "3750580369545537533"
     }
   },
   "parameters": {
@@ -123,13 +123,17 @@
             "objectId": "[parameters('keyVaultAdminObjectId')]",
             "permissions": {
               "keys": [
-                "all"
+                "create",
+                "delete",
+                "get",
+                "list",
+                "wrapKey",
+                "unwrapKey"
               ],
               "secrets": [
-                "all"
-              ],
-              "certificates": [
-                "all"
+                "get",
+                "list",
+                "set"
               ]
             }
           }
