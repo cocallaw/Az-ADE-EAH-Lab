@@ -1,4 +1,4 @@
-#Requires -Modules Az.Accounts, Az.Resources
+#Requires -Modules Az.Accounts, Az.Resources, Az.PolicyInsights
 
 <#
 .SYNOPSIS
@@ -54,7 +54,7 @@
     .\05-Enforce-EAH-Policy.ps1 -Scope "/subscriptions/<sub-id>/resourceGroups/my-rg"
 
 .NOTES
-    Requires: Az.Accounts, Az.Resources
+    Requires: Az.Accounts, Az.Resources, Az.PolicyInsights
     Policy ID: fc4d8e41-e223-45ea-9bf5-eada37891d87
     Reference: https://learn.microsoft.com/en-us/azure/governance/policy/assign-policy-powershell
     Reference: https://learn.microsoft.com/en-us/azure/virtual-machines/disk-encryption-migrate
@@ -199,6 +199,7 @@ if ($PolicyEffect -eq 'Audit') {
     Write-Host ""
     Write-Host "   Set-AzPolicyAssignment ``" -ForegroundColor White
     Write-Host "     -Name '$AssignmentName' ``" -ForegroundColor White
+    Write-Host "     -Scope '$Scope' ``" -ForegroundColor White
     Write-Host "     -PolicyParameterObject @{ effect = @{ value = 'Deny' } }" -ForegroundColor White
 } else {
     Write-Host " Policy is in DENY mode." -ForegroundColor Red

@@ -153,6 +153,7 @@ if [[ "$POLICY_EFFECT" == "Audit" ]]; then
   echo ""
   echo "   az policy assignment update \\"
   echo "     --name '$ASSIGNMENT_NAME' \\"
+  echo "     --scope '$SCOPE' \\"
   echo "     --params '{\"effect\": {\"value\": \"Deny\"}}'"
 else
   echo " Policy is in DENY mode."
