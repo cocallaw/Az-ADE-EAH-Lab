@@ -33,6 +33,9 @@
 #   NEW_VM_NAME  defaults to "<VM_NAME>-eah"
 #   SAS_EXPIRY_HOURS (env var) controls SAS URI validity for disk copy. Default: 2
 #   For disks larger than 512 GiB, increase to 6-24 hours.
+#   Azure enforces a maximum SAS duration of 60 days (5,184,000 seconds) as of
+#   Feb 2025. The 72-hour cap below is well within this limit, but if you adapt
+#   the script for very large (4+ TB) disks, keep SAS_EXPIRY_HOURS under 1440.
 #
 # Dry-run (no changes applied):
 #   DRY_RUN=1 bash 03-migrate-ade-to-eah.sh <RESOURCE_GROUP> <VM_NAME>
@@ -49,7 +52,7 @@ SUBSCRIPTION_ID="${4:-}"
 DRY_RUN="${DRY_RUN:-0}"
 SAS_EXPIRY_HOURS="${SAS_EXPIRY_HOURS:-2}"
 
-# Validate SAS_EXPIRY_HOURS is between 1 and 72
+# Validate SAS_EXPIRY_HOURS is between 1 and 72 (Azure maximum is 60 days / 1440 hours)
 if ! [[ "$SAS_EXPIRY_HOURS" =~ ^[0-9]+$ ]] || (( SAS_EXPIRY_HOURS < 1 || SAS_EXPIRY_HOURS > 72 )); then
   echo "ERROR: SAS_EXPIRY_HOURS must be an integer between 1 and 72 (got: $SAS_EXPIRY_HOURS)." >&2
   exit 1

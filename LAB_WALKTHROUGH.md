@@ -384,6 +384,11 @@ The migration script prints ready-to-run commands at the end of its output for r
 az group delete --name ade-lab-rg --yes --no-wait
 ```
 
+> **Key Vault purge protection:** The lab templates enable purge protection with a 7-day soft-delete retention period. After you delete the resource group, the Key Vault name remains **reserved for 7 days** and cannot be reused or purged early. If you plan to re-run the lab:
+>
+> - Use a **different resource group name** or **naming prefix** for each run. The Bicep templates already generate unique Key Vault names using a deployment timestamp. Terraform users should change the `prefix` variable in `terraform.tfvars`.
+> - See [Key Vault soft-delete overview](https://learn.microsoft.com/en-us/azure/key-vault/general/soft-delete-overview) for more details on retention behavior.
+
 ---
 
 ## Troubleshooting
@@ -399,7 +404,7 @@ az group delete --name ade-lab-rg --yes --no-wait
 | New VM not visible / NIC conflict | The script deletes the original VM to release NICs before creating the new one. If the script fails mid-way, manually delete the original VM in the portal (do **not** delete attached disks or NICs) before re-running. |
 | Disk copy timeout | For disks larger than 512 GiB, increase the SAS token lifetime: set `-SasExpiryHours 6` (PowerShell) or `SAS_EXPIRY_HOURS=6` (CLI). Default is 2 hours. |
 | `jq: command not found` (CLI scripts) | Install jq: `sudo apt-get install jq` (Ubuntu/Debian), `brew install jq` (macOS), or see [jq downloads](https://jqlang.github.io/jq/download/). |
-| Key Vault soft-delete conflict | The Bicep templates use a deployment timestamp to generate a unique Key Vault name on every deployment, avoiding conflicts with soft-deleted vaults. If you still encounter a conflict (e.g. from a manual deployment), purge or recover the soft-deleted vault: `az keyvault purge --name <KV-NAME>`. |
+| Key Vault soft-delete conflict | The Bicep templates use a deployment timestamp to generate a unique Key Vault name on every deployment, avoiding conflicts with soft-deleted vaults. Terraform uses a random suffix. If you still encounter a conflict (e.g. from a manual deployment), recover the soft-deleted vault with `az keyvault recover --name <KV-NAME>`, or wait for the 7-day purge protection retention period to expire. Using a different resource group or naming prefix avoids the issue entirely. |
 
 ---
 

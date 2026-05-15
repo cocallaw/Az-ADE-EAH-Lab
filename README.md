@@ -194,6 +194,8 @@ After completing the lab, delete the resource group to avoid ongoing charges:
 az group delete --name <YOUR-RG> --yes --no-wait
 ```
 
+> **Key Vault purge protection:** The templates enable purge protection with a 7-day soft-delete retention period. After resource group deletion, the Key Vault name remains **reserved for 7 days** and cannot be reused or purged early. For repeated lab runs, use a different resource group or naming prefix. See [Key Vault soft-delete overview](https://learn.microsoft.com/en-us/azure/key-vault/general/soft-delete-overview) for details.
+
 ---
 
 ## References

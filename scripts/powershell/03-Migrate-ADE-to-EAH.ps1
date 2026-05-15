@@ -43,6 +43,9 @@
 .PARAMETER SasExpiryHours
     (Optional) Validity period in hours for SAS URIs used during disk copy. Default: 2.
     For disks larger than 512 GiB, increase to 6-24 hours.
+    Azure enforces a maximum SAS duration of 60 days (5,184,000 seconds / 1440 hours)
+    as of Feb 2025. The 72-hour cap is well within this limit, but keep this in mind
+    if you adapt the script for very large (4+ TB) disks.
 
 .PARAMETER WhatIf
     Dry-run mode – shows what would happen without making any changes.
@@ -78,7 +81,7 @@ param (
 
     [string]$SubscriptionId,
 
-    [ValidateRange(1, 72)]
+    [ValidateRange(1, 72)] # Azure maximum is 60 days (1440 hours)
     [int]$SasExpiryHours = 2
 )
 
