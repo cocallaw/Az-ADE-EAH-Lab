@@ -11,6 +11,7 @@ These Bash scripts guide you through every step of migrating a VM from **Azure D
 | [`03-migrate-ade-to-eah.sh`](03-migrate-ade-to-eah.sh) | Full migration: disables ADE, copies disks via Upload+azcopy, creates new VM with EaH |
 | [`03b-migrate-linux-os-disk.sh`](03b-migrate-linux-os-disk.sh) | Linux OS disk path: creates fresh VM with EaH, migrates data disks only |
 | [`04-validate-eah.sh`](04-validate-eah.sh) | Confirms EaH is active and ADE is fully removed after migration |
+| [`05-enforce-eah-policy.sh`](05-enforce-eah-policy.sh) | Assigns Azure Policy to audit or deny VMs without Encryption at Host |
 
 ## Prerequisites
 
@@ -122,6 +123,45 @@ bash 04-validate-eah.sh ade-lab-rg adelab-win-vm
 ```
 
 Expected output: `PASSED: VM is fully migrated to Encryption at Host.`
+
+---
+
+### Step 5 – Enforce Encryption at Host via Azure Policy
+
+After migration, assign the built-in Azure Policy to audit (and eventually deny) VMs that don't have Encryption at Host enabled:
+
+```bash
+bash 05-enforce-eah-policy.sh
+```
+
+By default the policy is assigned in **Audit** mode. Non-compliant VMs are flagged but not blocked. The script triggers a compliance scan and lists any non-compliant resources.
+
+To switch to **Deny** mode (blocks creation of VMs without EaH):
+
+```bash
+POLICY_EFFECT=Deny bash 05-enforce-eah-policy.sh
+```
+
+To scope the policy to a specific resource group:
+
+```bash
+SCOPE="/subscriptions/<sub-id>/resourceGroups/ade-lab-rg" bash 05-enforce-eah-policy.sh
+```
+
+To skip waiting for the compliance scan:
+
+```bash
+SKIP_SCAN=1 bash 05-enforce-eah-policy.sh
+```
+
+To re-check compliance at any time:
+
+```bash
+az policy state list \
+  --policy-assignment 'enforce-eah-audit' \
+  --filter 'isCompliant eq false' \
+  --query '[].{VM:resourceId, State:complianceState}'
+```
 
 ---
 
