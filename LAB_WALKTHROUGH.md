@@ -384,14 +384,10 @@ The migration script prints ready-to-run commands at the end of its output for r
 az group delete --name ade-lab-rg --yes --no-wait
 ```
 
-> **Key Vault purge protection:** The lab templates enable purge protection with a 7-day soft-delete retention period. After you delete the resource group, the Key Vault name remains **reserved for 7 days** and cannot be reused. If you plan to re-run the lab:
+> **Key Vault purge protection:** The lab templates enable purge protection with a 7-day soft-delete retention period. After you delete the resource group, the Key Vault name remains **reserved for 7 days** and cannot be reused or purged early. If you plan to re-run the lab:
 >
-> - Use a **different resource group name** or **Key Vault prefix** for each run. The Bicep templates already generate unique names using a deployment timestamp, but Terraform users should update `key_vault_name` in `terraform.tfvars`.
-> - To purge a soft-deleted vault immediately (requires the Key Vault Contributor role):
->   ```bash
->   az keyvault purge --name <KV-NAME>
->   ```
-> - See [Key Vault soft-delete overview](https://learn.microsoft.com/en-us/azure/key-vault/general/soft-delete-overview) for more details.
+> - Use a **different resource group name** or **naming prefix** for each run. The Bicep templates already generate unique Key Vault names using a deployment timestamp. Terraform users should change the `prefix` variable in `terraform.tfvars`.
+> - See [Key Vault soft-delete overview](https://learn.microsoft.com/en-us/azure/key-vault/general/soft-delete-overview) for more details on retention behavior.
 
 ---
 
