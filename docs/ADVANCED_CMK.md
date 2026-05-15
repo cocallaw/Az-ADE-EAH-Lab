@@ -134,11 +134,22 @@ az disk-encryption-set show \
 
 ## Cleanup
 
+### Bicep deployment
+
 ```bash
 az group delete --name cmk-lab-rg --yes --no-wait
 ```
 
-> **Note:** The Key Vault has purge protection enabled (required by DES). After resource group deletion, the vault enters a soft-deleted state and is automatically purged after the retention period (7 days).
+### Terraform deployment
+
+```bash
+cd terraform/windows-cmk
+terraform destroy -var="admin_password=<SECURE-PASSWORD>"
+```
+
+> **Note:** Always prefer `terraform destroy` over `az group delete` when using Terraform — deleting the resource group directly leaves Terraform state pointing at deleted resources and can block re-deployments if the same Key Vault name is reused (purge protection prevents immediate re-creation).
+
+> **Key Vault purge protection:** The Key Vault has purge protection enabled (required by DES). After destruction, the vault enters a soft-deleted state and is automatically purged after the retention period (7 days). If you need to redeploy sooner, change the `prefix` variable to generate a new Key Vault name.
 
 ---
 
