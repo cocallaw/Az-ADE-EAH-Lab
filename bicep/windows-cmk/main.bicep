@@ -58,7 +58,7 @@ param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
 // Variables
 // ---------------------------------------------------------------------------
 
-var kvName = '${prefix}-kv-${uniqueString(resourceGroup().id, deploymentTimestamp)}'
+var kvName = '${prefix}-kv-${take(uniqueString(resourceGroup().id, deploymentTimestamp), 24 - length(prefix) - 4)}'
 var vnetName = '${prefix}-vnet'
 var subnetName = 'default'
 var nsgName = '${prefix}-nsg'

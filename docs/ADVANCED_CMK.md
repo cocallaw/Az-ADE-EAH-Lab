@@ -125,7 +125,8 @@ az vm show \
 az disk-encryption-set show \
   --resource-group cmk-lab-rg \
   --name cmklab-des \
-  --query "{name:name, encryptionType:encryptionType, autoRotation:rotationToLatestKeyVersionEnabled}"
+  --query "{name:name, encryptionType:encryptionType, autoRotation:rotationToLatestKeyVersionEnabled}" \
+  -o table
 # Expected: EncryptionAtRestWithCustomerKey, true
 ```
 

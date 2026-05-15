@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.40.2.10011",
-      "templateHash": "14943086287911010659"
+      "templateHash": "14621866813668819927"
     }
   },
   "parameters": {
@@ -83,7 +83,7 @@
     }
   },
   "variables": {
-    "kvName": "[format('{0}-kv-{1}', parameters('prefix'), uniqueString(resourceGroup().id, parameters('deploymentTimestamp')))]",
+    "kvName": "[format('{0}-kv-{1}', parameters('prefix'), take(uniqueString(resourceGroup().id, parameters('deploymentTimestamp')), sub(sub(24, length(parameters('prefix'))), 4)))]",
     "vnetName": "[format('{0}-vnet', parameters('prefix'))]",
     "subnetName": "default",
     "nsgName": "[format('{0}-nsg', parameters('prefix'))]",
