@@ -161,9 +161,12 @@ copy_disk_via_upload() {
     echo "  Revoking SAS access..."
     az disk revoke-access --resource-group "$RESOURCE_GROUP" --name "$src_disk_name" --output none
     az disk revoke-access --resource-group "$RESOURCE_GROUP" --name "$tgt_disk_name" --output none
-    # Remove from tracking array after successful revocation
-    SAS_GRANTED_DISKS=("${SAS_GRANTED_DISKS[@]/$src_disk_name/}")
-    SAS_GRANTED_DISKS=("${SAS_GRANTED_DISKS[@]/$tgt_disk_name/}")
+    # Remove revoked disks from tracking array
+    local new_arr=()
+    for d in "${SAS_GRANTED_DISKS[@]}"; do
+      [[ "$d" != "$src_disk_name" && "$d" != "$tgt_disk_name" ]] && new_arr+=("$d")
+    done
+    SAS_GRANTED_DISKS=("${new_arr[@]+"${new_arr[@]}"}")
     echo "  Disk copy complete. ✓"
   fi
 }
@@ -425,22 +428,76 @@ copy_disk_via_upload \
 declare -a NEW_DATA_DISK_INFO=()
 
 if [[ -n "$DATA_DISK_INFO" ]]; then
-  while IFS='|' read -r disk_name lun; do
-    [[ -z "$disk_name" ]] && continue
-    src_sku=$(az disk show \
-      --resource-group "$RESOURCE_GROUP" \
-      --name "$disk_name" \
-      --query "sku.name" -o tsv)
-    new_data_disk_name="${disk_name}-eah"
-    echo "Data disk (LUN $lun): $disk_name → $new_data_disk_name"
-    copy_disk_via_upload \
-      "$disk_name" \
-      "$new_data_disk_name" \
-      "" \
-      "" \
-      "$src_sku"
-    NEW_DATA_DISK_INFO+=("${new_data_disk_name}|${lun}|${disk_name}")
-  done <<< "$DATA_DISK_INFO"
+  DATA_DISK_COUNT=$(echo "$DATA_DISK_INFO" | grep -c . 2>/dev/null || echo 0)
+
+  if (( DATA_DISK_COUNT > 1 )); then
+    echo "Copying $DATA_DISK_COUNT data disks in parallel..."
+    declare -a COPY_PIDS=()
+    declare -a COPY_DISK_NAMES=()
+
+    while IFS='|' read -r disk_name lun; do
+      [[ -z "$disk_name" ]] && continue
+      src_sku=$(az disk show \
+        --resource-group "$RESOURCE_GROUP" \
+        --name "$disk_name" \
+        --query "sku.name" -o tsv)
+      new_data_disk_name="${disk_name}-eah"
+      echo "Data disk (LUN $lun): $disk_name → $new_data_disk_name"
+      # Track disk names in parent for cleanup trap (subshells can't update parent arrays)
+      SAS_GRANTED_DISKS+=("$disk_name" "$new_data_disk_name")
+      # Clear SAS tracking in subshell to prevent inherited EXIT trap from
+      # revoking SAS grants belonging to other parallel copies
+      (SAS_GRANTED_DISKS=(); copy_disk_via_upload \
+        "$disk_name" \
+        "$new_data_disk_name" \
+        "" \
+        "" \
+        "$src_sku") &
+      COPY_PIDS+=($!)
+      COPY_DISK_NAMES+=("${new_data_disk_name}|${lun}|${disk_name}")
+    done <<< "$DATA_DISK_INFO"
+
+    # Wait for all parallel copies and check for failures
+    COPY_FAILED=0
+    for i in "${!COPY_PIDS[@]}"; do
+      if ! wait "${COPY_PIDS[$i]}"; then
+        echo "ERROR: Disk copy failed for '${COPY_DISK_NAMES[$i]%%|*}'." >&2
+        COPY_FAILED=1
+      fi
+    done
+    if (( COPY_FAILED )); then
+      echo "ERROR: One or more parallel disk copies failed. See output above." >&2
+      exit 1
+    fi
+    # Parallel copies completed — revoke SAS grants tracked in parent
+    while IFS='|' read -r new_name lun src_name; do
+      [[ -z "$new_name" ]] && continue
+      az disk revoke-access --resource-group "$RESOURCE_GROUP" --name "$src_name" --output none 2>/dev/null || true
+      az disk revoke-access --resource-group "$RESOURCE_GROUP" --name "$new_name" --output none 2>/dev/null || true
+    done < <(printf '%s\n' "${COPY_DISK_NAMES[@]}")
+    # Clear tracked disks after successful revocation
+    SAS_GRANTED_DISKS=()
+
+    NEW_DATA_DISK_INFO=("${COPY_DISK_NAMES[@]}")
+  else
+    # Single data disk — copy sequentially (no benefit from parallelism)
+    while IFS='|' read -r disk_name lun; do
+      [[ -z "$disk_name" ]] && continue
+      src_sku=$(az disk show \
+        --resource-group "$RESOURCE_GROUP" \
+        --name "$disk_name" \
+        --query "sku.name" -o tsv)
+      new_data_disk_name="${disk_name}-eah"
+      echo "Data disk (LUN $lun): $disk_name → $new_data_disk_name"
+      copy_disk_via_upload \
+        "$disk_name" \
+        "$new_data_disk_name" \
+        "" \
+        "" \
+        "$src_sku"
+      NEW_DATA_DISK_INFO+=("${new_data_disk_name}|${lun}|${disk_name}")
+    done <<< "$DATA_DISK_INFO"
+  fi
 fi
 
 echo "All new disks created successfully. ✓"
