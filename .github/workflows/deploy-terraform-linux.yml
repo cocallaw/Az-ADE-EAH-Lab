@@ -36,6 +36,10 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: deploy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   WORKING_DIR: terraform/linux
   ARM_USE_OIDC: true
@@ -47,6 +51,7 @@ jobs:
   deploy:
     name: Deploy Linux VM with ADE
     runs-on: ubuntu-latest
+    environment: lab
     defaults:
       run:
         working-directory: ${{ env.WORKING_DIR }}

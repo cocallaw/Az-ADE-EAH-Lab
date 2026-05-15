@@ -36,6 +36,10 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: deploy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   TEMPLATE_FILE: bicep/windows/main.bicep
 
@@ -43,6 +47,7 @@ jobs:
   deploy:
     name: Deploy Windows VM with ADE
     runs-on: ubuntu-latest
+    environment: lab
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
