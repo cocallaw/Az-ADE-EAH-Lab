@@ -11,6 +11,7 @@ These scripts guide you through every step of migrating a VM from **Azure Disk E
 | [`03-Migrate-ADE-to-EAH.ps1`](03-Migrate-ADE-to-EAH.ps1) | Full migration: disables ADE, copies disks via Upload+AzCopy, creates new VM with EaH |
 | [`03b-Migrate-Linux-OS-Disk.ps1`](03b-Migrate-Linux-OS-Disk.ps1) | Linux OS disk path: creates fresh VM with EaH, migrates data disks only |
 | [`04-Validate-EAH.ps1`](04-Validate-EAH.ps1) | Confirms EaH is active and ADE is fully removed after migration |
+| [`05-Enforce-EAH-Policy.ps1`](05-Enforce-EAH-Policy.ps1) | Assigns Azure Policy to audit or deny VMs without Encryption at Host |
 
 ## Prerequisites
 
@@ -123,6 +124,45 @@ Dry-run:
 ```
 
 Expected output: `PASSED: VM is fully migrated to Encryption at Host.`
+
+---
+
+### Step 5 – Enforce Encryption at Host via Azure Policy
+
+After migration, assign the built-in Azure Policy to audit (and eventually deny) VMs that don't have Encryption at Host enabled:
+
+```powershell
+.\05-Enforce-EAH-Policy.ps1
+```
+
+By default the policy is assigned in **Audit** mode. Non-compliant VMs are flagged but not blocked. The script triggers a compliance scan and lists any non-compliant resources.
+
+To switch to **Deny** mode (blocks creation of VMs without EaH):
+
+```powershell
+.\05-Enforce-EAH-Policy.ps1 -PolicyEffect Deny
+```
+
+To scope the policy to a specific resource group:
+
+```powershell
+.\05-Enforce-EAH-Policy.ps1 -Scope "/subscriptions/<sub-id>/resourceGroups/ade-lab-rg"
+```
+
+To skip waiting for the compliance scan:
+
+```powershell
+.\05-Enforce-EAH-Policy.ps1 -SkipScan
+```
+
+To re-check compliance at any time:
+
+```powershell
+Get-AzPolicyState `
+    -PolicyAssignmentName 'enforce-eah-audit' `
+    -Filter 'isCompliant eq false' |
+    Select-Object ResourceId, ComplianceState
+```
 
 ---
 
