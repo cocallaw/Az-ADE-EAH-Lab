@@ -376,6 +376,21 @@ bash scripts/cli/04-validate-eah.sh ade-lab-rg <NEW-VM-NAME>
 
 ---
 
+## Advanced: Customer-Managed Keys (CMK)
+
+> **Optional exercise** — If you want to go beyond platform-managed keys and maintain full customer key ownership after migrating to EaH, this section demonstrates Disk Encryption Sets with Customer-Managed Keys.
+
+The advanced CMK templates deploy a Windows VM with **Encryption at Host + a Disk Encryption Set** backed by a customer-managed key in Key Vault. No ADE extension is needed — this is the target end-state with full customer key control.
+
+| IaC Tool | Directory |
+|----------|-----------|
+| **Bicep** | [`bicep/windows-cmk/`](bicep/windows-cmk/) |
+| **Terraform** | [`terraform/windows-cmk/`](terraform/windows-cmk/) |
+
+📄 **Full walkthrough:** [docs/ADVANCED_CMK.md](docs/ADVANCED_CMK.md) — covers DES concepts, auto-key-rotation, identity permissions, deployment, and validation commands.
+
+---
+
 ## Cleanup
 
 The migration script prints ready-to-run commands at the end of its output for removing the original VM and its disks. Run those first, then delete the resource group to stop all remaining charges:
