@@ -551,7 +551,7 @@ if ($PSCmdlet.ShouldProcess("$NewVMName", "New-AzVM with EncryptionAtHost enable
 
     # Build new VM config
     Write-Host "Building VM configuration for '$NewVMName'..."
-    $newVmConfig = New-AzVMConfig -VMName $NewVMName -VMSize $vmSize
+    $newVmConfig = New-AzVMConfig -VMName $NewVMName -VMSize $vmSize -EncryptionAtHost
 
     # Attach OS disk
     if ($osType -eq 'Windows') {
@@ -581,9 +581,6 @@ if ($PSCmdlet.ShouldProcess("$NewVMName", "New-AzVM with EncryptionAtHost enable
         }
         $isPrimary = $false
     }
-
-    # Enable Encryption at Host
-    $newVmConfig = Set-AzVMSecurityProfile -VM $newVmConfig -EncryptionAtHost $true
 
     Write-Host "Creating VM '$NewVMName'..."
     New-AzVM -ResourceGroupName $ResourceGroupName -Location $vmLocation -VM $newVmConfig | Out-Null
