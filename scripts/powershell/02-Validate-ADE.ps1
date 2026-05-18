@@ -49,9 +49,20 @@ if ($SubscriptionId) {
 Write-Host ""
 Write-Host "=== ADE Validation: $VMName ===" -ForegroundColor Cyan
 
-# ── Extension status ─────────────────────────────────────────────────────────
+# ── Retrieve VM ──────────────────────────────────────────────────────────────
 
-$vm = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName
+try {
+    $vm = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName -ErrorAction Stop
+} catch {
+    if ($_.Exception.Message -match 'ResourceNotFound|was not found') {
+        Write-Host "ERROR: VM '$VMName' was not found in resource group '$ResourceGroupName'." -ForegroundColor Red
+        Write-Host "Please verify the VM name and resource group, then try again." -ForegroundColor Yellow
+        exit 1
+    }
+    throw
+}
+
+# ── Extension status ─────────────────────────────────────────────────────────
 $osType = $vm.StorageProfile.OsDisk.OsType
 
 $extName = if ($osType -eq 'Windows') { 'AzureDiskEncryption' } else { 'AzureDiskEncryptionForLinux' }
