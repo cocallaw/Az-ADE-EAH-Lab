@@ -204,3 +204,4 @@ az group delete --name <YOUR-RG> --yes --no-wait
 - [Encryption at Host – End-to-end encryption for VM disks](https://learn.microsoft.com/en-us/azure/virtual-machines/disk-encryption#encryption-at-host---end-to-end-encryption-for-your-vm-data)
 - [Azure Disk Encryption overview](https://learn.microsoft.com/en-us/azure/virtual-machines/disk-encryption-overview)
 - [Key Vault for Azure Disk Encryption](https://learn.microsoft.com/en-us/azure/virtual-machines/disk-encryption-key-vault)
+- [Scale Automation – Fleet-wide migration patterns](docs/SCALE_AUTOMATION.md)

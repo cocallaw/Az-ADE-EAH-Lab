@@ -1,0 +1,17 @@
+# Code Owners
+# These owners will be automatically requested for review on PRs.
+
+# Default owner for everything
+* @cocallaw
+
+# Bicep templates
+/bicep/ @cocallaw
+
+# Terraform templates
+/terraform/ @cocallaw
+
+# Migration and validation scripts
+/scripts/ @cocallaw
+
+# CI/CD workflows
+/.github/workflows/ @cocallaw

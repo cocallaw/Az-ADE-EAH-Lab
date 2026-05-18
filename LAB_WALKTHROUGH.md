@@ -423,6 +423,17 @@ az group delete --name ade-lab-rg --yes --no-wait
 
 ---
 
+## Scale Automation
+
+Ready to migrate an entire fleet? See [docs/SCALE_AUTOMATION.md](docs/SCALE_AUTOMATION.md) for patterns covering:
+
+- Azure Resource Graph discovery of ADE VMs across subscriptions
+- Parallel pre-migration checks using Run Command
+- Managed Run Command for large fleets (fire-and-forget)
+- Batch migration with throttling and rate limit awareness
+
+---
+
 ## Additional Resources
 
 - [Migrate from ADE to Encryption at Host – Microsoft Learn](https://learn.microsoft.com/en-us/azure/virtual-machines/disk-encryption-migrate)
