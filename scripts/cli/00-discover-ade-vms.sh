@@ -15,13 +15,18 @@ set -euo pipefail
 #   bash 00-discover-ade-vms.sh
 #===============================================================================
 
-# Verify az graph query is available
-if ! az graph query -q "Resources | limit 1" --first 1 &>/dev/null; then
-    echo "ERROR: 'az graph query' failed. Ensure Azure CLI 2.50+ is installed"
-    echo "       and you are logged in (az login)."
+# Verify az graph query is available (check command existence without running a real query)
+if ! az graph query --help &>/dev/null; then
+    echo "ERROR: 'az graph query' is not available. Ensure Azure CLI 2.50+ is installed."
     echo ""
     echo "On older CLI versions, install the extension:"
     echo "  az extension add --name resource-graph"
+    exit 1
+fi
+
+# Verify login state
+if ! az account show &>/dev/null; then
+    echo "ERROR: Not logged in to Azure CLI. Run 'az login' first."
     exit 1
 fi
 
@@ -30,10 +35,10 @@ echo ""
 az graph query -q "
   Resources
   | where type =~ 'microsoft.compute/virtualmachines/extensions'
-  | where name in ('AzureDiskEncryption', 'AzureDiskEncryptionForLinux')
+  | where properties.type in ('AzureDiskEncryption', 'AzureDiskEncryptionForLinux')
   | where properties.provisioningState == 'Succeeded'
   | extend vmName = tostring(split(id, '/')[8])
-  | project vmName, resourceGroup, location, subscriptionId, extensionType = name
+  | project vmName, resourceGroup, location, subscriptionId, extensionType = tostring(properties.type)
   | order by subscriptionId, resourceGroup
 " --first 1000 --query "data" -o table
 

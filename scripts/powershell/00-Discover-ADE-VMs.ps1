@@ -21,12 +21,11 @@ $ErrorActionPreference = 'Stop'
 
 # Verify Az.ResourceGraph module is available
 if (-not (Get-Module -ListAvailable -Name Az.ResourceGraph)) {
-    Write-Error @"
-Az.ResourceGraph module is not installed. Install it with:
-  Install-Module -Name Az.ResourceGraph -Scope CurrentUser
-
-Then re-run this script.
-"@
+    Write-Host "ERROR: Az.ResourceGraph module is not installed." -ForegroundColor Red
+    Write-Host "       Install it with:" -ForegroundColor Red
+    Write-Host "         Install-Module -Name Az.ResourceGraph -Scope CurrentUser" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "       Then re-run this script." -ForegroundColor Red
     exit 1
 }
 Import-Module Az.ResourceGraph
@@ -37,10 +36,10 @@ Write-Host ""
 $adeQuery = @"
 Resources
 | where type =~ 'microsoft.compute/virtualmachines/extensions'
-| where name in ('AzureDiskEncryption', 'AzureDiskEncryptionForLinux')
+| where properties.type in ('AzureDiskEncryption', 'AzureDiskEncryptionForLinux')
 | where properties.provisioningState == 'Succeeded'
 | extend vmName = tostring(split(id, '/')[8])
-| project vmName, resourceGroup, location, subscriptionId, extensionType = name
+| project vmName, resourceGroup, location, subscriptionId, extensionType = tostring(properties.type)
 | order by subscriptionId, resourceGroup
 "@
 

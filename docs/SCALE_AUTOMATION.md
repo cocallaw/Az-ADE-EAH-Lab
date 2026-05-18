@@ -4,6 +4,19 @@ This document covers patterns for applying the ADE-to-Encryption at Host migrati
 
 ---
 
+## Prerequisites
+
+| Tool | Minimum Version | Notes |
+|------|-----------------|-------|
+| Azure CLI | 2.50+ | `az graph query` is built-in on recent versions |
+| Azure PowerShell (Az module) | 10.0+ | For PowerShell examples |
+| Az.ResourceGraph module | — | `Install-Module Az.ResourceGraph` |
+| jq | 1.6+ | Required by Bash examples for JSON parsing |
+
+You must be logged in (`az login` or `Connect-AzAccount`) with access to the target subscriptions.
+
+---
+
 ## Discovery: Finding Migration Candidates
 
 Before migrating at scale, identify which VMs have ADE enabled and which already use Encryption at Host. Use the discovery scripts included in this lab:
@@ -34,11 +47,10 @@ ADE_VMS=$(az graph query -q "
 while IFS= read -r entry; do
   VM=$(echo "$entry" | jq -r '.vm')
   RG=$(echo "$entry" | jq -r '.rg')
-  echo "Checking $VM in $RG..."
-  (az vm run-command invoke -g "$RG" -n "$VM" \
+  (echo "[$VM@$RG] $(az vm run-command invoke -g "$RG" -n "$VM" \
     --command-id RunPowerShellScript \
     --scripts "manage-bde -status C:" \
-    --query "value[0].message" -o tsv) &
+    --query "value[0].message" -o tsv)") &
 done < <(echo "$ADE_VMS" | jq -c '.[]')
 wait
 echo "All checks complete."
