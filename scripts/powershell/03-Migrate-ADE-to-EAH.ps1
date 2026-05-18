@@ -337,8 +337,11 @@ if ($osEncrypted -or $dataEncrypted) {
                 -CommandId 'RunPowerShellScript' -ScriptString 'manage-bde -status' -ErrorAction Stop
             $rcOutput = $rcResult.Value | ForEach-Object { $_.Message } | Out-String
             Write-Host $rcOutput
-            if ($rcOutput -match 'Fully Decrypted') {
-                Write-Host "  ✅ In-VM check: volumes report 'Fully Decrypted'." -ForegroundColor Green
+            if ($rcOutput -match 'Decryption in Progress|Encryption in Progress') {
+                Write-Host "  ⚠️  In-VM check: one or more volumes still show decryption/encryption in progress." -ForegroundColor Yellow
+                Write-Host "  Wait for decryption to complete before continuing." -ForegroundColor Yellow
+            } elseif ($rcOutput -match 'Fully Decrypted') {
+                Write-Host "  ✅ In-VM check: all volumes report 'Fully Decrypted'." -ForegroundColor Green
             } else {
                 Write-Host "  ⚠️  In-VM check: could not confirm 'Fully Decrypted' status." -ForegroundColor Yellow
                 Write-Host "  Verify manually via RDP before continuing." -ForegroundColor Yellow

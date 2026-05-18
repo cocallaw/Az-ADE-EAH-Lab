@@ -343,8 +343,11 @@ if [[ "$OS_ENC" == "Encrypted" || "$DATA_ENC" == "Encrypted" ]]; then
       --query "value[0].message" -o tsv 2>/dev/null || echo "[Run Command failed – check manually]")
     echo "$RC_OUTPUT"
     echo ""
-    if echo "$RC_OUTPUT" | grep -qi "Fully Decrypted"; then
-      echo "  ✅ In-VM check: volumes report 'Fully Decrypted'."
+    if echo "$RC_OUTPUT" | grep -qiE "Decryption in Progress|Encryption in Progress"; then
+      echo "  ⚠️  In-VM check: one or more volumes still show decryption/encryption in progress."
+      echo "  Wait for decryption to complete before continuing."
+    elif echo "$RC_OUTPUT" | grep -qi "Fully Decrypted"; then
+      echo "  ✅ In-VM check: all volumes report 'Fully Decrypted'."
     else
       echo "  ⚠️  In-VM check: could not confirm 'Fully Decrypted' status."
       echo "  Verify manually via RDP before continuing."
