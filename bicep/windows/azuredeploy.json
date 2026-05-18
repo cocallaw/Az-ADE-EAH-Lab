@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.41.2.15936",
-      "templateHash": "11853944405643095880"
+      "version": "0.43.8.12551",
+      "templateHash": "17334481015200483220"
     }
   },
   "parameters": {
@@ -124,13 +124,17 @@
             "objectId": "[parameters('keyVaultAdminObjectId')]",
             "permissions": {
               "keys": [
-                "all"
+                "create",
+                "delete",
+                "get",
+                "list",
+                "wrapKey",
+                "unwrapKey"
               ],
               "secrets": [
-                "all"
-              ],
-              "certificates": [
-                "all"
+                "get",
+                "list",
+                "set"
               ]
             }
           }
@@ -384,6 +388,41 @@
         "description": "Resource Group name."
       },
       "value": "[resourceGroup().name]"
+    },
+    "osDiskName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the OS managed disk."
+      },
+      "value": "[reference(resourceId('Microsoft.Compute/virtualMachines', variables('vmName')), '2024-07-01').storageProfile.osDisk.name]"
+    },
+    "osDiskId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the OS managed disk."
+      },
+      "value": "[reference(resourceId('Microsoft.Compute/virtualMachines', variables('vmName')), '2024-07-01').storageProfile.osDisk.managedDisk.id]"
+    },
+    "nicId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the network interface."
+      },
+      "value": "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]"
+    },
+    "subnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the subnet."
+      },
+      "value": "[format('{0}/subnets/{1}', resourceId('Microsoft.Network/virtualNetworks', variables('vnetName')), variables('subnetName'))]"
+    },
+    "vmSize": {
+      "type": "string",
+      "metadata": {
+        "description": "VM size SKU."
+      },
+      "value": "[reference(resourceId('Microsoft.Compute/virtualMachines', variables('vmName')), '2024-07-01').hardwareProfile.vmSize]"
     }
   }
 }
