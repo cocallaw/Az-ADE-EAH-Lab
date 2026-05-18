@@ -30,8 +30,8 @@ ADE_VMS=$(az graph query -q "
   | project vmName = tostring(split(id,'/')[8]), rg = resourceGroup
 " --query "data[].{vm:vmName,rg:rg}" -o json)
 
-# Run BitLocker status check in parallel
-echo "$ADE_VMS" | jq -c '.[]' | while IFS= read -r entry; do
+# Run BitLocker status check in parallel (process substitution keeps jobs in current shell)
+while IFS= read -r entry; do
   VM=$(echo "$entry" | jq -r '.vm')
   RG=$(echo "$entry" | jq -r '.rg')
   echo "Checking $VM in $RG..."
@@ -39,7 +39,7 @@ echo "$ADE_VMS" | jq -c '.[]' | while IFS= read -r entry; do
     --command-id RunPowerShellScript \
     --scripts "manage-bde -status C:" \
     --query "value[0].message" -o tsv) &
-done
+done < <(echo "$ADE_VMS" | jq -c '.[]')
 wait
 echo "All checks complete."
 ```
@@ -149,13 +149,13 @@ for ((i=0; i<TOTAL; i+=BATCH_SIZE)); do
   echo ""
   echo "=== Batch $BATCH_NUM (VMs $((i+1)) to $((i+BATCH_SIZE < TOTAL ? i+BATCH_SIZE : TOTAL))) ==="
 
-  echo "$BATCH" | jq -c '.[]' | while IFS= read -r entry; do
+  while IFS= read -r entry; do
     VM=$(echo "$entry" | jq -r '.vmName')
     RG=$(echo "$entry" | jq -r '.rg')
     echo "  Migrating $VM in $RG..."
     # Uncomment to execute:
     # bash scripts/cli/03-migrate-ade-to-eah.sh "$RG" "$VM" &
-  done
+  done < <(echo "$BATCH" | jq -c '.[]')
   wait
 
   if [ $((i + BATCH_SIZE)) -lt "$TOTAL" ]; then

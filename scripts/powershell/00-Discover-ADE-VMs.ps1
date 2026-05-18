@@ -10,7 +10,7 @@
 .NOTES
     Prerequisites:
       - Az PowerShell module 10.0+
-      - Az.ResourceGraph module
+      - Az.ResourceGraph module (Install-Module Az.ResourceGraph)
       - Logged in: Connect-AzAccount
 #>
 [CmdletBinding()]
@@ -19,10 +19,15 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Ensure Az.ResourceGraph module is available
+# Verify Az.ResourceGraph module is available
 if (-not (Get-Module -ListAvailable -Name Az.ResourceGraph)) {
-    Write-Host "Installing Az.ResourceGraph module..."
-    Install-Module -Name Az.ResourceGraph -Scope CurrentUser -Force
+    Write-Error @"
+Az.ResourceGraph module is not installed. Install it with:
+  Install-Module -Name Az.ResourceGraph -Scope CurrentUser
+
+Then re-run this script.
+"@
+    exit 1
 }
 Import-Module Az.ResourceGraph
 
@@ -39,7 +44,7 @@ Resources
 | order by subscriptionId, resourceGroup
 "@
 
-$adeVMs = Search-AzGraph -Query $adeQuery
+$adeVMs = @(Search-AzGraph -Query $adeQuery -First 1000)
 if ($adeVMs.Count -gt 0) {
     $adeVMs | Format-Table -AutoSize
 } else {
@@ -57,7 +62,7 @@ Resources
 | project name, resourceGroup, location, subscriptionId
 "@
 
-$eahVMs = Search-AzGraph -Query $eahQuery
+$eahVMs = @(Search-AzGraph -Query $eahQuery -First 1000)
 if ($eahVMs.Count -gt 0) {
     $eahVMs | Format-Table -AutoSize
 } else {
@@ -76,12 +81,15 @@ Resources
   by subscriptionId
 "@
 
-$summary = Search-AzGraph -Query $summaryQuery
+$summary = @(Search-AzGraph -Query $summaryQuery -First 1000)
 if ($summary.Count -gt 0) {
     $summary | Format-Table -AutoSize
 } else {
     Write-Host "  No VMs found in accessible subscriptions." -ForegroundColor Yellow
 }
 
+Write-Host ""
+Write-Host "NOTE: Results are limited to the first 1000 rows per query." -ForegroundColor DarkGray
+Write-Host "      For larger environments, implement paging with -SkipToken." -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "Done. VMs listed under 'ADE-Encrypted VMs' that are NOT in the 'Already on EaH' list are migration candidates." -ForegroundColor Green
