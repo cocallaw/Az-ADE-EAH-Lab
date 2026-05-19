@@ -8,14 +8,19 @@ The migration creates a **new VM** — it copies disks via Upload+AzCopy (stripp
 
 ## Architecture
 
-The repo is organized around a 2×2 matrix: **IaC tool** (Bicep or Terraform) × **scripting tool** (PowerShell or CLI). All four paths deploy the same resource stack and follow the same 4-step lifecycle:
+The repo is organized around a 2×2 matrix: **IaC tool** (Bicep or Terraform) × **scripting tool** (PowerShell or CLI). All four paths deploy the same resource stack and follow a numbered lifecycle:
 
+0. Discover ADE-encrypted VMs via Azure Resource Graph (`00-*`)
 1. Register the EncryptionAtHost feature (`01-*`)
 2. Validate ADE is enabled (`02-*`)
 3. Migrate ADE → EaH (`03-*`)
+3b. Migrate Linux OS disk — fresh VM approach (`03b-*`)
 4. Validate EaH is active (`04-*`)
+5. Enforce EaH via Azure Policy (`05-*`)
 
 Each IaC template deploys: Resource Group → Key Vault + KEK key → NSG → VNet/Subnet → Public IP → NIC → VM → ADE extension. Windows and Linux variants are separate directories with parallel structure.
+
+A **windows-cmk** variant exists in both `bicep/` and `terraform/`. This is an advanced lab exercise showing the post-migration end-state: a VM with Encryption at Host enabled plus a Disk Encryption Set (DES) backed by a customer-managed key (CMK) in Key Vault. No ADE extension is deployed in this variant. Note: `windows-cmk` is not currently included in the CI validation workflow matrices (Bicep or Terraform).
 
 ## Build & Validation
 
@@ -42,7 +47,7 @@ terraform validate
 terraform plan -var-file="terraform.tfvars"
 ```
 
-No CI workflow exists for Terraform validation.
+The `validate-terraform.yml` workflow runs `fmt -check`, `init -backend=false`, and `validate` on push/PR to `main` for `terraform/**` changes (matrix: `terraform/windows`, `terraform/linux`).
 
 ## Conventions
 
@@ -70,6 +75,9 @@ No CI workflow exists for Terraform validation.
 - Migration script supports `-WhatIf` via `SupportsShouldProcess`
 - Error handling: `Set-StrictMode -Version Latest` + `$ErrorActionPreference = 'Stop'`
 - Helper functions in migration script: `Write-Step`, `Format-Elapsed`, `Copy-DiskViaUpload`
+- Discovery script (`00-`) uses `Az.ResourceGraph` for cross-subscription VM enumeration
+- Linux OS disk migration script (`03b-`) creates a fresh VM from marketplace image
+- Policy script (`05-`) assigns the built-in EaH audit/deny policy and triggers compliance scan
 
 ### CLI/Bash Scripts (`scripts/cli/`)
 
@@ -77,6 +85,9 @@ No CI workflow exists for Terraform validation.
 - Positional arguments for required params; environment variables for optional config (`DRY_RUN`, `SAS_EXPIRY_HOURS`)
 - Error handling: `set -euo pipefail`
 - Helper functions in migration script: `step`, `run`, `format_elapsed`, `copy_disk_via_upload`
+- Discovery script (`00-`) uses `az graph query` for cross-subscription VM enumeration
+- Linux OS disk migration script (`03b-`) creates a fresh VM from marketplace image
+- Policy script (`05-`) assigns the built-in EaH audit/deny policy and triggers compliance scan
 
 ### Windows vs Linux Differences
 
