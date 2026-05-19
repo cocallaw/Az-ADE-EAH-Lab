@@ -378,7 +378,6 @@ $stepTimings += [PSCustomObject]@{ Name = "Step 6 – Copy data disks"; Elapsed 
 Write-Step "Step 7 – Delete original VM resource (preserving disks and NICs)"
 $stepTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
-Write-Host "  Deleting VM resource '$VMName' (disks and NICs are preserved)..."
 if ($PSCmdlet.ShouldProcess($VMName, "Delete VM resource")) {
     # Ensure NICs and disks survive VM deletion by setting deleteOption to Detach.
     $vmUpdate = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName
@@ -390,9 +389,10 @@ if ($PSCmdlet.ShouldProcess($VMName, "Delete VM resource")) {
         $dd.DeleteOption = 'Detach'
     }
     Update-AzVM -ResourceGroupName $ResourceGroupName -VM $vmUpdate | Out-Null
+    Write-Host "  Deleting VM resource '$VMName' (disks and NICs are preserved)..."
     Remove-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName -Force | Out-Null
+    Write-Host "  Original VM resource deleted. ✓"
 }
-Write-Host "  Original VM resource deleted. ✓"
 
 $stepTimer.Stop()
 $stepTimings += [PSCustomObject]@{ Name = "Step 7 – Delete original VM"; Elapsed = $stepTimer.Elapsed }
