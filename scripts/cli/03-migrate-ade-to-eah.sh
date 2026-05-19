@@ -517,20 +517,23 @@ echo "  ⏱  $(format_elapsed $STEP_ELAPSED)"
 step "Step 7 – Create new VM '$NEW_VM_NAME' with Encryption at Host"
 STEP_START=$SECONDS
 
-# Ensure NICs and disks survive VM deletion by setting deleteOption to Detach.
-# VMs deployed with deleteOption: Delete on NIC/OSDisk references will auto-delete
+# Ensure NICs, OS disk, and data disks survive VM deletion by setting deleteOption to Detach.
+# VMs deployed with deleteOption: Delete on NIC/OSDisk/DataDisk references will auto-delete
 # those resources when the VM is removed unless we change this first.
-echo "Setting NIC and disk delete options to 'Detach' so they survive VM removal..."
+echo "Setting NIC, OS disk, and data disk delete options to 'Detach' so they survive VM removal..."
 nic_count=$(echo "$NIC_IDS" | wc -l)
-nic_set_args=()
+data_disk_count=$(echo "$VM_JSON" | jq '.storageProfile.dataDisks | length')
+set_args=(--set "storageProfile.osDisk.deleteOption=Detach")
 for i in $(seq 0 $(( nic_count - 1 ))); do
-  nic_set_args+=(--set "networkProfile.networkInterfaces[$i].properties.deleteOption=Detach")
+  set_args+=(--set "networkProfile.networkInterfaces[$i].properties.deleteOption=Detach")
+done
+for i in $(seq 0 $(( data_disk_count - 1 ))); do
+  set_args+=(--set "storageProfile.dataDisks[$i].deleteOption=Detach")
 done
 run az vm update \
   --resource-group "$RESOURCE_GROUP" \
   --name "$VM_NAME" \
-  --set "storageProfile.osDisk.deleteOption=Detach" \
-  "${nic_set_args[@]}" \
+  "${set_args[@]}" \
   --output none
 echo "Delete options updated. ✓"
 
