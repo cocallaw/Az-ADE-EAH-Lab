@@ -517,10 +517,25 @@ echo "  ⏱  $(format_elapsed $STEP_ELAPSED)"
 step "Step 7 – Create new VM '$NEW_VM_NAME' with Encryption at Host"
 STEP_START=$SECONDS
 
-# Azure does not allow a VM to have zero NICs, so NICs cannot be detached
-# individually.  Instead, delete the original VM resource (disks and NICs are
-# NOT deleted) to release the NICs so they can be attached to the new VM.
-# The original OS disk and data disks remain as unattached managed disks.
+# Ensure NICs and disks survive VM deletion by setting deleteOption to Detach.
+# VMs deployed with deleteOption: Delete on NIC/OSDisk references will auto-delete
+# those resources when the VM is removed unless we change this first.
+echo "Setting NIC and disk delete options to 'Detach' so they survive VM removal..."
+nic_count=$(echo "$NIC_IDS" | wc -l)
+nic_set_args=()
+for i in $(seq 0 $(( nic_count - 1 ))); do
+  nic_set_args+=(--set "networkProfile.networkInterfaces[$i].properties.deleteOption=Detach")
+done
+run az vm update \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$VM_NAME" \
+  --set "storageProfile.osDisk.deleteOption=Detach" \
+  "${nic_set_args[@]}" \
+  --output none
+echo "Delete options updated. ✓"
+
+# Delete the original VM resource to release NICs so they can be attached to the new VM.
+# The OS disk and data disks remain as unattached managed disks.
 echo "Removing original VM resource '$VM_NAME' to release its NICs (disks are preserved)..."
 run az vm delete \
   --resource-group "$RESOURCE_GROUP" \

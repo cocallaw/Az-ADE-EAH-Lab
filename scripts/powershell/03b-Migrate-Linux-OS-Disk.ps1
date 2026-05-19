@@ -380,6 +380,16 @@ $stepTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
 Write-Host "  Deleting VM resource '$VMName' (disks and NICs are preserved)..."
 if ($PSCmdlet.ShouldProcess($VMName, "Delete VM resource")) {
+    # Ensure NICs and disks survive VM deletion by setting deleteOption to Detach.
+    $vmUpdate = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName
+    foreach ($nicRef in $vmUpdate.NetworkProfile.NetworkInterfaces) {
+        $nicRef.DeleteOption = 'Detach'
+    }
+    $vmUpdate.StorageProfile.OsDisk.DeleteOption = 'Detach'
+    foreach ($dd in $vmUpdate.StorageProfile.DataDisks) {
+        $dd.DeleteOption = 'Detach'
+    }
+    Update-AzVM -ResourceGroupName $ResourceGroupName -VM $vmUpdate | Out-Null
     Remove-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName -Force | Out-Null
 }
 Write-Host "  Original VM resource deleted. ✓"
