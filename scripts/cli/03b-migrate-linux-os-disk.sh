@@ -396,7 +396,7 @@ set_args=(--set "storageProfile.osDisk.deleteOption=Detach")
 for i in $(seq 0 $(( nic_count - 1 ))); do
   set_args+=(--set "networkProfile.networkInterfaces[$i].deleteOption=Detach")
 done
-for i in $(seq 0 $(( data_disk_count - 1 ))); do
+for ((i=0; i<data_disk_count; i++)); do
   set_args+=(--set "storageProfile.dataDisks[$i].deleteOption=Detach")
 done
 run az vm update \

@@ -378,7 +378,7 @@ $stepTimings += [PSCustomObject]@{ Name = "Step 6 – Copy data disks"; Elapsed 
 Write-Step "Step 7 – Delete original VM resource (preserving disks and NICs)"
 $stepTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
-if ($PSCmdlet.ShouldProcess($VMName, "Delete VM resource")) {
+if ($PSCmdlet.ShouldProcess($VMName, "Set deleteOption=Detach on NICs/disks and remove source VM")) {
     # Ensure NICs and disks survive VM deletion by setting deleteOption to Detach.
     $vmUpdate = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName
     foreach ($nicRef in $vmUpdate.NetworkProfile.NetworkInterfaces) {
