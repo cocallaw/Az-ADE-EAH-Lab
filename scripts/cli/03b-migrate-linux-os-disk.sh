@@ -389,6 +389,22 @@ STEP_NAMES+=("Step 6 – Copy data disks"); STEP_TIMES+=("$STEP_ELAPSED")
 step "Step 7 – Delete original VM resource (preserving disks and NICs)"
 STEP_START=$SECONDS
 
+echo "  Setting NIC, OS disk, and data disk delete options to 'Detach' so they survive VM removal..."
+nic_count=$(echo "$NIC_IDS" | wc -l)
+data_disk_count=$(echo "$VM_JSON" | jq '.storageProfile.dataDisks | length')
+set_args=(--set "storageProfile.osDisk.deleteOption=Detach")
+for i in $(seq 0 $(( nic_count - 1 ))); do
+  set_args+=(--set "networkProfile.networkInterfaces[$i].deleteOption=Detach")
+done
+for ((i=0; i<data_disk_count; i++)); do
+  set_args+=(--set "storageProfile.dataDisks[$i].deleteOption=Detach")
+done
+run az vm update \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$VM_NAME" \
+  "${set_args[@]}" \
+  --output none
+
 echo "  Deleting VM resource '$VM_NAME' (disks and NICs are preserved)..."
 run az vm delete \
   --resource-group "$RESOURCE_GROUP" \

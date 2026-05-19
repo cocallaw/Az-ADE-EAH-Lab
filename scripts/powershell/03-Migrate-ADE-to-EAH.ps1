@@ -542,15 +542,31 @@ Write-Host "  ⏱  $(Format-Elapsed $stepTimer.Elapsed)" -ForegroundColor DarkGr
 Write-Step "Step 7 – Create new VM '$NewVMName' with Encryption at Host"
 $stepTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
-if ($PSCmdlet.ShouldProcess("$NewVMName", "New-AzVM with EncryptionAtHost enabled")) {
+if ($PSCmdlet.ShouldProcess("$VMName", "Set deleteOption=Detach on NICs/disks and remove source VM")) {
 
-    # Azure does not allow a VM to have zero NICs, so NICs cannot be detached
-    # via Update-AzVM.  Instead, delete the original VM resource (disks and NICs
-    # are NOT deleted) to release the NICs so they can be attached to the new VM.
-    # The original OS disk and data disks remain as unattached managed disks.
+    # Ensure NICs, OS disk, and data disks survive VM deletion by setting deleteOption to Detach.
+    # VMs deployed with deleteOption: Delete on NIC/OSDisk/DataDisk references will auto-delete
+    # those resources when the VM is removed unless we change this first.
+    Write-Host "Setting NIC, OS disk, and data disk delete options to 'Detach' so they survive VM removal..."
+    $vmUpdate = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName
+    foreach ($nicRef in $vmUpdate.NetworkProfile.NetworkInterfaces) {
+        $nicRef.DeleteOption = 'Detach'
+    }
+    $vmUpdate.StorageProfile.OsDisk.DeleteOption = 'Detach'
+    foreach ($dd in $vmUpdate.StorageProfile.DataDisks) {
+        $dd.DeleteOption = 'Detach'
+    }
+    Update-AzVM -ResourceGroupName $ResourceGroupName -VM $vmUpdate | Out-Null
+    Write-Host "Delete options updated." -ForegroundColor Green
+
+    # Delete the original VM resource to release NICs so they can be attached to the new VM.
+    # The OS disk and data disks remain as unattached managed disks.
     Write-Host "Removing original VM resource '$VMName' to release its NICs (disks are preserved)..."
     Remove-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName -Force | Out-Null
     Write-Host "Original VM resource removed. Disks and NICs are intact." -ForegroundColor Green
+}
+
+if ($PSCmdlet.ShouldProcess("$NewVMName", "New-AzVM with EncryptionAtHost enabled")) {
 
     # Build new VM config
     Write-Host "Building VM configuration for '$NewVMName'..."
