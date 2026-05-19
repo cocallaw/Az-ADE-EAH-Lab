@@ -49,9 +49,36 @@ if ($SubscriptionId) {
 Write-Host ""
 Write-Host "=== ADE Validation: $VMName ===" -ForegroundColor Cyan
 
-# ── Extension status ─────────────────────────────────────────────────────────
+# ── Retrieve VM ──────────────────────────────────────────────────────────────
 
-$vm = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName
+try {
+    $vm = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName -ErrorAction Stop
+} catch {
+    $isNotFound = $false
+
+    # Az module wraps REST errors in CloudException with a structured Body.Code
+    $cloudEx = $_.Exception
+    while ($cloudEx -and -not ($cloudEx.PSObject.Properties['Body'])) {
+        $cloudEx = $cloudEx.InnerException
+    }
+    if ($cloudEx -and $cloudEx.Body.Code -eq 'ResourceNotFound') {
+        $isNotFound = $true
+    }
+
+    # Fallback: check the PowerShell error ID for the specific not-found category
+    if (-not $isNotFound -and $_.FullyQualifiedErrorId -match 'ResourceNotFound') {
+        $isNotFound = $true
+    }
+
+    if ($isNotFound) {
+        Write-Host "ERROR: VM '$VMName' was not found in resource group '$ResourceGroupName'." -ForegroundColor Red
+        Write-Host "Please verify the VM name and resource group, then try again." -ForegroundColor Yellow
+        exit 1
+    }
+    throw
+}
+
+# ── Extension status ─────────────────────────────────────────────────────────
 $osType = $vm.StorageProfile.OsDisk.OsType
 
 $extName = if ($osType -eq 'Windows') { 'AzureDiskEncryption' } else { 'AzureDiskEncryptionForLinux' }
