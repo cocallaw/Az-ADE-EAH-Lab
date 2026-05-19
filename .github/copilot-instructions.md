@@ -20,7 +20,7 @@ The repo is organized around a 2×2 matrix: **IaC tool** (Bicep or Terraform) ×
 
 Each IaC template deploys: Resource Group → Key Vault + KEK key → NSG → VNet/Subnet → Public IP → NIC → VM → ADE extension. Windows and Linux variants are separate directories with parallel structure.
 
-A **windows-cmk** variant exists in both `bicep/` and `terraform/`. This is an advanced lab exercise showing the post-migration end-state: a VM with Encryption at Host enabled plus a Disk Encryption Set (DES) backed by a customer-managed key (CMK) in Key Vault. No ADE extension is deployed in this variant.
+A **windows-cmk** variant exists in both `bicep/` and `terraform/`. This is an advanced lab exercise showing the post-migration end-state: a VM with Encryption at Host enabled plus a Disk Encryption Set (DES) backed by a customer-managed key (CMK) in Key Vault. No ADE extension is deployed in this variant. Note: `windows-cmk` is not currently included in the CI validation workflow matrices (Bicep or Terraform).
 
 ## Build & Validation
 
